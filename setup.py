@@ -31,7 +31,7 @@ setup(
         'screenplain.parsers',
     ],
     package_data={
-        'screenplain.export': ['default.css']
+        'screenplain.export': ['default.css', 'courier_prime/**']
     },
     entry_points={
         'console_scripts': [
