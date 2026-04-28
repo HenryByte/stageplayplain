@@ -4,6 +4,7 @@
 
 import sys
 import os
+import re
 
 from reportlab import platypus
 from reportlab.lib import colors, pagesizes
@@ -12,6 +13,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     BaseDocTemplate,
+    Flowable,
     Frame,
     NextPageTemplate,
     PageTemplate,
@@ -21,7 +23,6 @@ from reportlab.platypus import (
 
 from screenplain import types
 from screenplain.types import Action, Dialog, DualDialog, Slug, Transition
-from reportlab.lib import pagesizes
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -234,6 +235,47 @@ class Settings:
         ])
 
 
+class SlugWithSceneNumbers(Flowable):
+    """Custom flowable that renders a slug with scene numbers in margins."""
+
+    def __init__(self, slug_paragraph, scene_number, settings: Settings):
+        Flowable.__init__(self)
+        self.slug_paragraph = slug_paragraph
+        self.scene_number = scene_number.to_html()
+        self.settings = settings
+        # Copy spacing attributes from the paragraph's style
+        self.spaceBefore = slug_paragraph.style.spaceBefore
+        self.spaceAfter = slug_paragraph.style.spaceAfter
+        self.keepWithNext = slug_paragraph.style.keepWithNext
+
+    def wrap(self, availWidth, availHeight):
+        # Delegate to the wrapped paragraph
+        return self.slug_paragraph.wrap(availWidth, availHeight)
+
+    def draw(self):
+        # Draw the main slug paragraph
+        self.slug_paragraph.drawOn(self.canv, 0, 0)
+
+        canvas = self.canv
+        canvas.saveState()
+
+        # Use same font as slug, but always plain (not bold/underline)
+        canvas.setFont(
+            self.settings.font_settings.family_name,
+            self.settings.font_size
+        )
+
+        # Left margin: Position to the left of frame
+        left_x = -0.75 * inch
+        canvas.drawString(left_x, 0, self.scene_number)
+
+        # Right margin: Right-aligned inside right margin area
+        right_x = self.settings.frame_width
+        canvas.drawRightString(right_x, 0, self.scene_number)
+
+        canvas.restoreState()
+
+
 class DocTemplate(BaseDocTemplate):
     def __init__(self, *args, **kwargs):
         self.settings = (
@@ -290,16 +332,28 @@ def add_paragraph(story, para, style):
     ))
 
 
-def add_slug(story, para, style, is_strong):
+def add_slug(story, para, settings):
     for line in para.lines:
-        if is_strong:
+        if settings.strong_slugs:
             html = '<b><u>' + line.to_html() + '</u></b>'
         else:
             html = line.to_html()
-        story.append(Paragraph(html, style))
+
+        paragraph = Paragraph(html, settings.slug_style)
+
+        # Wrap in custom flowable if scene number exists
+        if para.scene_number:
+            flowable = SlugWithSceneNumbers(
+                paragraph, para.scene_number, settings
+            )
+            story.append(flowable)
+        else:
+            story.append(paragraph)
 
 
-def _dialog_to_flowables(dialog, settings: Settings, column_width=None):
+def _dialog_to_flowables(
+    dialog, settings: Settings, column_width=None
+) -> list[Flowable]:
     # If column_width is set, adjust indents proportionally
     if column_width is not None:
         proportion = column_width / settings.frame_width
@@ -325,13 +379,20 @@ def _dialog_to_flowables(dialog, settings: Settings, column_width=None):
         character_style = settings.character_style
         dialog_style = settings.dialog_style
         parenthentical_style = settings.parenthentical_style
-    flowables = [Paragraph(dialog.character.to_html(), character_style)]
+    flowables: list[Flowable] = [
+        Paragraph(dialog.character.to_html(), character_style)
+    ]
     for is_parenthetical, line in dialog.blocks:
         if is_parenthetical:
             style = parenthentical_style
         else:
             style = dialog_style
-        flowables.append(Paragraph(line.to_html(), style))
+        line_html = line.to_html()
+        if not line_html:
+            # Force an empty line to use vertical space
+            flowables.append(Spacer(1, settings.line_height))
+        else:
+            flowables.append(Paragraph(line_html, style))
     return flowables
 
 
@@ -448,6 +509,34 @@ def get_title_page_story(screenplay, settings):
     return story
 
 
+def pdf_metadata(screenplay):
+    title_lines = screenplay.get_rich_attribute("Title")
+    author_lines = [
+        *screenplay.get_rich_attribute("Author"),
+        *screenplay.get_rich_attribute("Authors"),
+    ]
+    subject_lines = screenplay.get_rich_attribute("Subject")
+    keywords_lines = screenplay.get_rich_attribute("Keywords")
+
+    lang_lines = [
+        *screenplay.get_rich_attribute("Lang"),
+        *screenplay.get_rich_attribute("Language"),
+    ]
+
+    return {
+        "title":   ' '.join([str(line) for line in title_lines]) or None,
+        "subject": ' '.join([str(line) for line in subject_lines]) or None,
+        "author": ', '.join([str(line) for line in author_lines]) or None,
+        "keywords": [
+            word.strip()
+            for line in keywords_lines
+            for word in re.split('[,;/]', str(line))
+            if word.strip()
+        ],
+        "lang":    ' '.join([str(line) for line in lang_lines]) or None,
+    }
+
+
 def to_pdf(
     screenplay, output_filename,
     template_constructor=DocTemplate,
@@ -470,7 +559,7 @@ def to_pdf(
                 else settings.action_style
             )
         elif isinstance(para, Slug):
-            add_slug(story, para, settings.slug_style, settings.strong_slugs)
+            add_slug(story, para, settings)
         elif isinstance(para, Transition):
             add_paragraph(story, para, settings.transition_style)
         elif isinstance(para, types.PageBreak):
@@ -479,10 +568,12 @@ def to_pdf(
             # Ignore unknown types
             pass
 
+    meta = pdf_metadata(screenplay)
     doc = template_constructor(
         output_filename,
         pagesize=(settings.page_width, settings.page_height),
         settings=settings,
-        has_title_page=has_title_page
+        has_title_page=has_title_page,
+        **meta,
     )
     doc.build(story)
