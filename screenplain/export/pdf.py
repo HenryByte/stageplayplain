@@ -23,7 +23,6 @@ from reportlab.platypus import (
 
 from screenplain import types
 from screenplain.types import Action, Dialog, DualDialog, Slug, Transition
-from reportlab.lib import pagesizes
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
