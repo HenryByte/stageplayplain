@@ -90,7 +90,7 @@ class Formatter:
             PageBreak: self.format_page_break,
         }
 
-    def convert(self, screenplay):
+    def convert(self, screenplay) -> None:
         """Converts a number of paragraphs into HTML and writes
         it to the output stream.
         `screenplay` is a sequence of paragraphs.
@@ -103,11 +103,11 @@ class Formatter:
                 format_function(para)
                 self.out.write("\n")
 
-    def format_dialog(self, dialog):
+    def format_dialog(self, dialog) -> None:
         with self._tag("div", classes=["dialog"]):
             self._write_dialog_block(dialog)
 
-    def format_dual(self, dual):
+    def format_dual(self, dual) -> None:
         with self._tag("div", classes=["dual"]):
             with self._tag("div", classes=["left"]):
                 self._write_dialog_block(dual.left)
@@ -124,7 +124,7 @@ class Formatter:
             with self._tag("p", classes=classes):
                 self.out.write(to_html(text))
 
-    def format_slug(self, slug):
+    def format_slug(self, slug) -> None:
         num = slug.scene_number
         with self._tag("h6"):
             if num:
@@ -138,14 +138,14 @@ class Formatter:
             with self._tag("span", classes=["h6-synopsis"]):
                 self.out.write(to_html(plain(slug.synopsis)))
 
-    def format_section(self, section):
+    def format_section(self, section) -> None:
         with self._tag(f"h{section.level}"):
             self.out.write(to_html(section.text))
         if section.synopsis:
             with self._tag("span", classes=[f"h{section.level}-synopsis"]):
                 self.out.write(to_html(plain(section.synopsis)))
 
-    def format_action(self, para):
+    def format_action(self, para) -> None:
         classes = ["action"]
         if para.centered:
             classes.append("centered")
@@ -156,21 +156,23 @@ class Formatter:
                         self.out.write("<br/>")
                     self.out.write(to_html(line))
 
-    def format_transition(self, para):
+    def format_transition(self, para) -> None:
         with self._tag("div", classes=["transition"]):
             self.out.write(to_html(para.line))
 
-    def format_page_break(self, para):
+    def format_page_break(self, para) -> None:
         self.page_break_before_next = True
 
-    def _tag(self, tag_name, classes=[]):
+    def _tag(self, tag_name, classes=None):
+        if classes is None:
+            classes = []
         if self.page_break_before_next:
             self.page_break_before_next = False
             classes = set(classes).union(("page-break",))
         return tag(self.out, tag_name, classes)
 
 
-def convert(screenplay, out, css_file=None, bare=False):
+def convert(screenplay, out, css_file=None, bare=False) -> None:
     """Convert the screenplay into HTML, written to the file-like object `out`.
 
     The output will be a complete HTML document unless `bare` is true.
@@ -186,7 +188,7 @@ def convert(screenplay, out, css_file=None, bare=False):
         )
 
 
-def convert_full(screenplay, out, css_file):
+def convert_full(screenplay, out, css_file) -> None:
     """Convert the screenplay into a complete HTML document,
     written to the file-like object `out`.
 
@@ -202,7 +204,7 @@ def convert_full(screenplay, out, css_file):
     out.write("</div></body></html>\n")
 
 
-def convert_bare(screenplay, out):
+def convert_bare(screenplay, out) -> None:
     """Convert the screenplay into HTML, written to the file-like object `out`.
     Does not create a complete HTML document, as it doesn't include
     <html>, <body>, etc.

@@ -48,7 +48,7 @@ class FontSettings:
         self.file_italic = None
         self.file_bold_italic = None
 
-    def register(self):
+    def register(self) -> None:
         if not self.file_normal:
             raise RuntimeError("No font file set for normal typeface")
 
@@ -258,7 +258,7 @@ class SlugWithSceneNumbers(Flowable):
         # Delegate to the wrapped paragraph
         return self.slug_paragraph.wrap(availWidth, availHeight)
 
-    def draw(self):
+    def draw(self) -> None:
         # Draw the main slug paragraph
         self.slug_paragraph.drawOn(self.canv, 0, 0)
 
@@ -311,7 +311,7 @@ class DocTemplate(BaseDocTemplate):
         ]
         BaseDocTemplate.__init__(self, pageTemplates=pageTemplates, *args, **kwargs)
 
-    def handle_pageBegin(self):
+    def handle_pageBegin(self) -> None:
         self.canv.setFont(
             self.settings.font_settings.family_name,
             self.settings.font_size,
@@ -330,11 +330,11 @@ class DocTemplate(BaseDocTemplate):
         self._handle_pageBegin()
 
 
-def add_paragraph(story, para, style):
+def add_paragraph(story, para, style) -> None:
     story.append(Paragraph("<br/>".join(line.to_html() for line in para.lines), style))
 
 
-def add_slug(story, para, settings):
+def add_slug(story, para, settings) -> None:
     for line in para.lines:
         if settings.strong_slugs:
             html = "<b><u>" + line.to_html() + "</u></b>"
@@ -394,13 +394,13 @@ def _dialog_to_flowables(
     return flowables
 
 
-def add_dialog(story, dialog, settings: Settings):
+def add_dialog(story, dialog, settings: Settings) -> None:
     flowables = _dialog_to_flowables(dialog, settings)
     for flowable in flowables:
         story.append(flowable)
 
 
-def add_dual_dialog(story, dual, settings: Settings):
+def add_dual_dialog(story, dual, settings: Settings) -> None:
     # Format dual dialog side-by-side using a Table
     col_width = settings.frame_width / 2
     left_flowables = _dialog_to_flowables(dual.left, settings, column_width=col_width)
@@ -438,7 +438,7 @@ def get_title_page_story(screenplay, settings):
         for line in lines:
             html = line.to_html()
             para = Paragraph(html, style)
-            width, height = para.wrap(settings.frame_width, settings.frame_height)
+            _width, height = para.wrap(settings.frame_width, settings.frame_height)
             story.append(para)
             total_height += height
         return space_before + total_height
@@ -532,7 +532,7 @@ def pdf_metadata(screenplay):
 
 def to_pdf(
     screenplay, output_filename, template_constructor=DocTemplate, settings=None
-):
+) -> None:
     settings = settings or create_default_settings()
     story = get_title_page_story(screenplay, settings)
     has_title_page = bool(story)

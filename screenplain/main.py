@@ -21,14 +21,14 @@ Screenplain will try to auto-detect the output format if
 an output-file is given. Otherwise use the --format option."""
 
 
-def invalid_format(parser, message):
+def invalid_format(parser, message) -> None:
     formats = " ".join(output_formats)
     parser.error(
         f"{message}\nUse --format with one of the following formats: {formats}"
     )
 
 
-def main(argv):
+def main(argv) -> None:
     parser = argparse.ArgumentParser(
         description=description, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -171,7 +171,7 @@ def main(argv):
             input.close()
 
 
-def cli():
+def cli() -> None:
     """setup.py entry point for console scripts."""
     main(sys.argv[1:])
 
