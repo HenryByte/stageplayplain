@@ -57,7 +57,7 @@ class InputParagraph:
     def __init__(self, lines):
         self.lines = lines
 
-    def update_list(self, previous_paragraphs):
+    def update_list(self, previous_paragraphs) -> None:
         """Inserts this paragraph into a list.
         Modifies the `previous_paragraphs` list.
         """
@@ -73,7 +73,7 @@ class InputParagraph:
             or self.append_action(previous_paragraphs)
         )
 
-    def append_slug(self, paragraphs):
+    def append_slug(self, paragraphs) -> bool:
         if len(self.lines) != 1:
             return False
 
@@ -94,7 +94,7 @@ class InputParagraph:
             paragraphs.append(Slug(_string_to_rich(text)))
         return True
 
-    def append_sections_and_synopsises(self, paragraphs):
+    def append_sections_and_synopsises(self, paragraphs) -> bool:
         new_paragraphs = []
 
         for line in self.lines:
@@ -115,7 +115,7 @@ class InputParagraph:
         paragraphs += new_paragraphs
         return True
 
-    def append_centered_action(self, paragraphs):
+    def append_centered_action(self, paragraphs) -> bool:
         if not all(centered_re.match(line) for line in self.lines):
             return False
         paragraphs.append(
@@ -134,7 +134,7 @@ class InputParagraph:
             _sequence_to_rich(line.strip() for line in self.lines[1:]),
         )
 
-    def append_dialog(self, paragraphs):
+    def append_dialog(self, paragraphs) -> bool:
         if len(self.lines) < 2:
             return False
 
@@ -159,7 +159,7 @@ class InputParagraph:
         paragraphs.append(self._create_dialog(character))
         return True
 
-    def append_transition(self, paragraphs):
+    def append_transition(self, paragraphs) -> bool:
         if len(self.lines) != 1:
             return False
 
@@ -186,7 +186,7 @@ class InputParagraph:
         else:
             return False
 
-    def append_action(self, paragraphs):
+    def append_action(self, paragraphs) -> bool:
         paragraphs.append(
             Action(
                 _sequence_to_rich(
@@ -197,7 +197,7 @@ class InputParagraph:
         )
         return True
 
-    def append_synopsis(self, paragraphs):
+    def append_synopsis(self, paragraphs) -> bool:
         if (
             len(self.lines) == 1
             and self.lines[0].startswith("=")
@@ -209,7 +209,7 @@ class InputParagraph:
         else:
             return False
 
-    def append_page_break(self, paragraphs):
+    def append_page_break(self, paragraphs) -> bool:
         if len(self.lines) == 1 and page_break_re.match(self.lines[0]):
             paragraphs.append(PageBreak())
             return True

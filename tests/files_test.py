@@ -39,10 +39,10 @@ class FileTests(TestCase):
 
     maxDiff = None
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.dir = tempfile.mkdtemp()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         shutil.rmtree(self.dir)
 
     def source(self, filename):
@@ -54,7 +54,7 @@ class FileTests(TestCase):
     def convert(self, input_file, output_file, expected_results_file, *options):
         input_path = self.source(input_file)
         output_path = self.target(output_file)
-        main(list(options) + [input_path, output_path])
+        main([*list(options), input_path, output_path])
         actual = read_file(output_path)
         expected = read_file(self.source(expected_results_file))
         return clean_string(actual), clean_string(expected)

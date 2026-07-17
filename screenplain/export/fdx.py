@@ -28,7 +28,7 @@ def _write_text_element(out, styles, text):
         out.write(f'      <Text Style="{style_value}">{escape(text)}</Text>\n')
 
 
-def write_text(out, rich, trailing_linebreak):
+def write_text(out, rich, trailing_linebreak) -> None:
     """Writes <Text Style="..."> elements."""
     for seg_no, segment in enumerate(rich.segments):
         fdx_styles = [style_names[n] for n in segment.get_ordered_styles()]
@@ -38,7 +38,7 @@ def write_text(out, rich, trailing_linebreak):
             _write_text_element(out, fdx_styles, segment.text)
 
 
-def write_paragraph(out, para_type, lines, centered=False):
+def write_paragraph(out, para_type, lines, centered=False) -> None:
     if centered:
         out.write(f'    <Paragraph Alignment="Center" Type="{para_type}">\n')
     else:
@@ -50,7 +50,7 @@ def write_paragraph(out, para_type, lines, centered=False):
     out.write("    </Paragraph>\n")
 
 
-def write_dialog(out, dialog):
+def write_dialog(out, dialog) -> None:
     write_paragraph(out, "Character", [dialog.character])
     for parenthetical, line in dialog.blocks:
         if parenthetical:
@@ -59,14 +59,14 @@ def write_dialog(out, dialog):
             write_paragraph(out, "Dialogue", [line])
 
 
-def write_dual_dialog(out, dual):
+def write_dual_dialog(out, dual) -> None:
     out.write("    <Paragraph>\n      <DualDialogue>\n")
     write_dialog(out, dual.left)
     write_dialog(out, dual.right)
     out.write("      </DualDialogue>\n    </Paragraph>\n")
 
 
-def to_fdx(screenplay, out):
+def to_fdx(screenplay, out) -> None:
     out.write(
         '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
         '<FinalDraft DocumentType="Script" Template="No" Version="1">\n'

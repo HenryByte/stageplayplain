@@ -10,18 +10,18 @@ from screenplain.richstring import bold, italic, plain
 
 
 class OutputTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.out = StringIO()
 
-    def test_plain_text_should_have_no_style(self):
+    def test_plain_text_should_have_no_style(self) -> None:
         write_text(self.out, plain("hello"), False)
         self.assertEqual(self.out.getvalue(), "      <Text>hello</Text>\n")
 
-    def test_bold_text_should_have_bold_style(self):
+    def test_bold_text_should_have_bold_style(self) -> None:
         write_text(self.out, bold("hello"), False)
         self.assertEqual(self.out.getvalue(), '      <Text Style="Bold">hello</Text>\n')
 
-    def test_sequential_styles(self):
+    def test_sequential_styles(self) -> None:
         rich = plain("plain") + bold("b") + italic("i")
         write_text(self.out, rich, False)
         self.assertEqual(
@@ -31,7 +31,7 @@ class OutputTests(TestCase):
             '      <Text Style="Italic">i</Text>\n',
         )
 
-    def test_several_styles(self):
+    def test_several_styles(self) -> None:
         rich = bold("outer") + (bold + italic)("inner") + bold("outer")
         write_text(self.out, rich, False)
         self.assertEqual(
@@ -41,7 +41,7 @@ class OutputTests(TestCase):
             '      <Text Style="Bold">outer</Text>\n',
         )
 
-    def test_write_text_adds_line_break_if_requested(self):
+    def test_write_text_adds_line_break_if_requested(self) -> None:
         rich = bold("outer") + (bold + italic)("inner") + bold("outer")
         write_text(self.out, rich, True)
         self.assertEqual(
