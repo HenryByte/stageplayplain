@@ -17,12 +17,12 @@ line_break_re = re.compile("\\s*\n\\s*")
 spaces_re = re.compile("[ \t]+")
 
 
-def read_file(path):
+def read_file(path) -> str:
     with open(path, encoding="utf-8") as stream:
         return stream.read()
 
 
-def clean_string(s):
+def clean_string(s) -> str:
     r"""Removes duplicated spaces and line breaks in a string.
 
     >>> clean_string('foo \n  \nbar\n\n')
@@ -45,13 +45,13 @@ class FileTests(TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.dir)
 
-    def source(self, filename):
+    def source(self, filename) -> str:
         return os.path.join(source_dir, filename)
 
-    def target(self, name):
+    def target(self, name) -> str:
         return os.path.join(self.dir, name)
 
-    def convert(self, input_file, output_file, expected_results_file, *options):
+    def convert(self, input_file, output_file, expected_results_file, *options) -> tuple[str, str]:
         input_path = self.source(input_file)
         output_path = self.target(output_file)
         main([*list(options), input_path, output_path])
@@ -60,7 +60,7 @@ class FileTests(TestCase):
         return clean_string(actual), clean_string(expected)
 
     @classmethod
-    def add_file_case(cls, source_file, expected_results_file):
+    def add_file_case(cls, source_file, expected_results_file) -> None:
         """Add a test case that compares the content
         of a generated file with the expected results.
 
@@ -78,7 +78,7 @@ class FileTests(TestCase):
         setattr(cls, func_name, test_function)
 
 
-def _create_tests():
+def _create_tests() -> None:
     """Creates a test case for every source/expect file pair.
 
     Finds all the source files in the test files directory.

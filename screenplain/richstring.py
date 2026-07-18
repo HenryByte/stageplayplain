@@ -2,13 +2,16 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import re
+from collections.abc import Iterable
 from html import escape as html_escape
 
 _magic_re = re.compile("[\ue700-\ue705]")
 
 
-def _escape(s):
+def _escape(s: str) -> str:
     """Replaces special HTML characters like <
     and non-ascii characters with ampersand escapes.
 
@@ -21,18 +24,18 @@ def _escape(s):
 class RichString:
     """A sequence of segments where each segment can have its own style."""
 
-    def __init__(self, *segments):
+    def __init__(self, *segments: Segment) -> None:
         self.segments = segments
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if not self.segments:
             return "empty_string"
         return " + ".join(repr(s) for s in self.segments)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "".join(str(s) for s in self.segments)
 
-    def startswith(self, string):
+    def startswith(self, string: str)-> bool:
         """Checks if the first segment in this string starts with a
         specific string.
 
@@ -43,7 +46,7 @@ class RichString:
             return False
         return self.segments[0].text.startswith(string)
 
-    def endswith(self, string):
+    def endswith(self, string: str) -> bool:
         """Checks if the last segment in this string ends with a
         specific string.
 
@@ -54,20 +57,20 @@ class RichString:
             return False
         return self.segments[-1].text.endswith(string)
 
-    def to_html(self):
+    def to_html(self) -> str:
         html = "".join(seg.to_html() for seg in self.segments)
         if html.startswith(" "):
             return "&nbsp;" + html[1:]
         else:
             return html
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, RichString) and self.segments == other.segments
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return isinstance(other, RichString) and self.segments != other.segments
 
-    def __add__(self, other):
+    def __add__(self, other: object) -> RichString:
         if hasattr(other, "segments"):
             return RichString(*(self.segments + other.segments))
         else:
@@ -77,43 +80,43 @@ class RichString:
 class Segment:
     """A piece of a rich string. Has a set of styles."""
 
-    def __init__(self, text, styles):
+    def __init__(self, text: str, styles: Iterable[type[Style]]) -> None:
         """
         Creates a segment with a set of styles.
         text is the raw text string, and
         styles is a set of Style subclasses.
         """
-        self.styles = set(styles)
-        self.text = text
+        self.styles: set[type[Style]] = set(styles)
+        self.text: str = text
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         styles = (
             "+".join(style.name() for style in self.get_ordered_styles()) or "plain"
         )
         return f"({styles})({self.text!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.text
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Segment)
             and self.text == other.text
             and self.styles == other.styles
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return (
             not isinstance(other, Segment)
             or self.text != other.text
             or self.styles != other.styles
         )
 
-    def get_ordered_styles(self):
+    def get_ordered_styles(self) -> list[type[Style]]:
         """Get the styles in this segment in a deterministic order."""
         return [style for style in all_styles if style in self.styles]
 
-    def to_html(self):
+    def to_html(self) -> str:
         ordered_styles = self.get_ordered_styles()
         return (
             "".join(style.start_html for style in ordered_styles)
@@ -129,14 +132,18 @@ class Segment:
 class Style:
     """Abstract base class for styles"""
 
+    parse_re: re.Pattern[str]
+
     start_magic = ""
     end_magic = ""
     start_html = ""
     end_html = ""
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         return cls.__name__.lower()
+
+
 
 
 class Italic(Style):
@@ -201,13 +208,15 @@ class _CreateStyledString:
     with a single segment with a specified style.
     """
 
-    def __init__(self, styles):
+    def __init__(self, styles: Iterable[type[Style]]):
         self.styles = set(styles)
 
-    def __call__(self, text):
+    def __call__(self, text: str) -> RichString:
         return RichString(Segment(text, self.styles))
 
-    def __add__(self, other):
+    def __add__(self, other: object):
+        if not isinstance(other, _CreateStyledString):
+            return NotImplemented
         return _CreateStyledString(self.styles.union(other.styles))
 
 
@@ -222,10 +231,10 @@ empty_string = RichString()
 literal_star = "\ue706"
 
 # All styles. Note: order matters! This is the order they are parsed.
-all_styles = (Bold, Italic, Underline)
+all_styles: tuple[type[Style], ...] = (Bold, Italic, Underline)
 
 
-def _unescape(source):
+def _unescape(source: str) -> str:
     r"""Converts backslash-escaped stars in a string to the magic
     "literal star" character.
 
@@ -236,7 +245,7 @@ def _unescape(source):
     return source.replace("\\*", literal_star)
 
 
-def _demagic_literals(text):
+def _demagic_literals(text: str) -> str:
     r"""Converts "literal star" characters to actual stars: "*"
 
     >>> _demagic_literals('\ue706hello\ue706')
@@ -245,7 +254,7 @@ def _demagic_literals(text):
     return text.replace(literal_star, "*")
 
 
-def parse_emphasis(source):
+def parse_emphasis(source: str) -> RichString:
     """Parses emphasis markers like * and ** in a string
     and returns a RichString object.
 

@@ -4,9 +4,11 @@
 
 import itertools
 import re
+from io import StringIO
 from itertools import takewhile
+from typing import Iterable
 
-from screenplain.richstring import parse_emphasis, plain
+from screenplain.richstring import parse_emphasis, plain, RichString
 from screenplain.types import (
     Action,
     Dialog,
@@ -15,7 +17,7 @@ from screenplain.types import (
     Screenplay,
     Section,
     Slug,
-    Transition,
+    Transition, SCREENPLAY_TYPES,
 )
 
 slug_regexes = (
@@ -43,12 +45,12 @@ page_break_re = re.compile(r"^={3,}$")
 note_re = re.compile(r"\[\[.*?\]\]", re.DOTALL)
 
 
-def _sequence_to_rich(lines):
+def _sequence_to_rich(lines: Iterable[str]) -> list[RichString]:
     """Converts a sequence of strings into a list of RichString."""
     return [parse_emphasis(line) for line in lines]
 
 
-def _string_to_rich(line):
+def _string_to_rich(line: str):
     """Converts a single string into a RichString."""
     return parse_emphasis(line)
 
@@ -151,7 +153,7 @@ class InputParagraph:
         if paragraphs and isinstance(paragraphs[-1], Dialog):
             dual_match = dual_dialog_re.match(character)
             if dual_match:
-                previous = paragraphs.pop()
+                previous: Dialog = paragraphs.pop()
                 dialog = self._create_dialog(dual_match.group(1))
                 paragraphs.append(DualDialog(previous, dialog))
                 return True
@@ -231,7 +233,7 @@ def _is_blank(line):
     return line == "" or line == " "
 
 
-def parse(stream):
+def parse(stream: StringIO) -> Screenplay:
     """Parses Fountain source.
 
     Returns a Screenplay object.
@@ -244,7 +246,7 @@ def parse(stream):
     return parse_lines(lines)
 
 
-def parse_lines(source):
+def parse_lines(source) -> Screenplay:
     """Reads raw text input and generates paragraph objects.
 
     Returns a Screenplay object.
@@ -272,7 +274,7 @@ def parse_lines(source):
         )
 
 
-def parse_body(source):
+def parse_body(source) -> list[SCREENPLAY_TYPES]:
     """Reads lines of the main screenplay and generates paragraph objects."""
 
     paragraphs = []
