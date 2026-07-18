@@ -14,11 +14,11 @@ from screenplain.types import (
     PageBreak,
     Section,
     Slug,
-    Transition,
+    Transition, SCREENPLAY_TYPES,
 )
 
 
-def parse(lines):
+def parse(lines: list[str]) -> list[SCREENPLAY_TYPES]:
     content = "\n".join(lines)
     return list(fountain.parse(StringIO(content)))
 
