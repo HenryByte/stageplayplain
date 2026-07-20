@@ -35,7 +35,7 @@ class RichString:
     def __str__(self) -> str:
         return "".join(str(s) for s in self.segments)
 
-    def startswith(self, string: str)-> bool:
+    def startswith(self, string: str) -> bool:
         """Checks if the first segment in this string starts with a
         specific string.
 
@@ -142,8 +142,6 @@ class Style:
     @classmethod
     def name(cls) -> str:
         return cls.__name__.lower()
-
-
 
 
 class Italic(Style):

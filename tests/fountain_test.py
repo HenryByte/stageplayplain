@@ -8,13 +8,14 @@ from unittest import TestCase
 from screenplain.parsers import fountain
 from screenplain.richstring import empty_string, italic, plain
 from screenplain.types import (
+    SCREENPLAY_TYPES,
     Action,
     Dialog,
     DualDialog,
     PageBreak,
     Section,
     Slug,
-    Transition, SCREENPLAY_TYPES,
+    Transition,
 )
 
 

@@ -51,7 +51,9 @@ class FileTests(TestCase):
     def target(self, name) -> str:
         return os.path.join(self.dir, name)
 
-    def convert(self, input_file, output_file, expected_results_file, *options) -> tuple[str, str]:
+    def convert(
+        self, input_file, output_file, expected_results_file, *options
+    ) -> tuple[str, str]:
         input_path = self.source(input_file)
         output_path = self.target(output_file)
         main([*list(options), input_path, output_path])
