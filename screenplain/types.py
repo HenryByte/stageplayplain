@@ -7,14 +7,19 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TypeAlias
 
-from screenplain.richstring import parse_emphasis, RichString
+from screenplain.richstring import RichString, parse_emphasis
 
 SCREENPLAY_TYPES: TypeAlias = (
     "Slug | Section | Dialog | DualDialog | Action | Transition | PageBreak"
 )
 
+
 class Screenplay:
-    def __init__(self, title_page: dict[str, list[str]] | None = None, paragraphs: list[SCREENPLAY_TYPES] | None = None) -> None:
+    def __init__(
+        self,
+        title_page: dict[str, list[str]] | None = None,
+        paragraphs: list[SCREENPLAY_TYPES] | None = None,
+    ) -> None:
         """
         Create a Screenplay object.
 
@@ -34,7 +39,9 @@ class Screenplay:
         else:
             self.paragraphs: list[SCREENPLAY_TYPES] = paragraphs
 
-    def get_rich_attribute(self, name: str, default: list[RichString] | None = None) -> list[RichString]:
+    def get_rich_attribute(
+        self, name: str, default: list[RichString] | None = None
+    ) -> list[RichString]:
         """Get an attribute from the title page parsed into a RichString.
         Returns a list of RichString objects.
 
@@ -72,14 +79,16 @@ class Slug:
     def lines(self) -> list[RichString]:
         return [self.line]
 
-    def set_synopsis(self, text : str) -> None:
+    def set_synopsis(self, text: str) -> None:
         self.synopsis = text
 
 
 class Section:
     """A section heading."""
 
-    def __init__(self, text: RichString, level: int, synopsis: str | None = None) -> None:
+    def __init__(
+        self, text: RichString, level: int, synopsis: str | None = None
+    ) -> None:
         self.text: RichString = text
         self.level: int = level
         self.synopsis: str = synopsis
@@ -102,7 +111,9 @@ class Section:
 
 
 class Dialog:
-    def __init__(self, character: RichString, lines : list[RichString] | None = None) -> None:
+    def __init__(
+        self, character: RichString, lines: list[RichString] | None = None
+    ) -> None:
         self.character: RichString = character
         self.blocks = []  # list of tuples of (is_parenthetical, text)
         if lines:
