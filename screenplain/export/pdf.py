@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from io import TextIOWrapper
+from typing import override
 
 from reportlab import platypus
 from reportlab.lib import colors, pagesizes
@@ -255,7 +256,8 @@ class SlugWithSceneNumbers(Flowable):
         self.spaceAfter = slug_paragraph.style.spaceAfter
         self.keepWithNext = slug_paragraph.style.keepWithNext
 
-    def wrap(self, availWidth, availHeight):
+    @override
+    def wrap(self, availWidth, availHeight) -> tuple[float, float]:
         # Delegate to the wrapped paragraph
         return self.slug_paragraph.wrap(availWidth, availHeight)
 
@@ -310,8 +312,9 @@ class DocTemplate(BaseDocTemplate):
             PageTemplate(id="title", frames=[title_frame]),
             PageTemplate(id="standard", frames=[frame]),
         ]
-        BaseDocTemplate.__init__(self, pageTemplates=pageTemplates, *args, **kwargs)
+        BaseDocTemplate.__init__(self, *args, pageTemplates=pageTemplates, **kwargs)
 
+    @override
     def handle_pageBegin(self) -> None:
         self.canv.setFont(
             self.settings.font_settings.family_name,
@@ -358,10 +361,10 @@ def _dialog_to_flowables(
     # If column_width is set, adjust indents proportionally
     if column_width is not None:
         proportion = column_width / settings.frame_width
-        character_left = settings.character_style.leftIndent * proportion
-        dialog_left = settings.dialog_style.leftIndent * proportion
-        parenthentical_left = settings.parenthentical_style.leftIndent * proportion
-        dialog_right = settings.dialog_style.rightIndent * proportion
+        character_left = settings.character_style.leftIndent * proportion  # ty: ignore[unresolved-attribute]
+        dialog_left = settings.dialog_style.leftIndent * proportion  # ty: ignore[unresolved-attribute]
+        parenthentical_left = settings.parenthentical_style.leftIndent * proportion  # ty: ignore[unresolved-attribute]
+        dialog_right = settings.dialog_style.rightIndent * proportion  # ty: ignore[unresolved-attribute]
         character_style = ParagraphStyle(
             "character-dual", settings.character_style, leftIndent=character_left
         )
@@ -419,7 +422,7 @@ def add_dual_dialog(story, dual, settings: Settings) -> None:
     story.append(table)
 
 
-def get_title_page_story(screenplay: Screenplay, settings: Settings):
+def get_title_page_story(screenplay: Screenplay, settings: Settings) -> list[Flowable]:
     """Get Platypus flowables for the title page"""
 
     # From Fountain spec:
@@ -504,7 +507,7 @@ def get_title_page_story(screenplay: Screenplay, settings: Settings):
     return story
 
 
-def pdf_metadata(screenplay):
+def pdf_metadata(screenplay: Screenplay) -> dict[str, str | list[str] | None]:
     title_lines = screenplay.get_rich_attribute("Title")
     author_lines = [
         *screenplay.get_rich_attribute("Author"),

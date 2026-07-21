@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TypeAlias, override
+from typing import override
 
 from screenplain.richstring import RichString, parse_emphasis
 
-SCREENPLAY_TYPES: TypeAlias = (
-    "Slug | Section | Dialog | DualDialog | Action | Transition | PageBreak"
+type SCREENPLAY_TYPES = (
+    Slug | Section | Dialog | DualDialog | Action | Transition | PageBreak
 )
 
 
