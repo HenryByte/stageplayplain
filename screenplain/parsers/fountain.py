@@ -186,7 +186,7 @@ class InputParagraph:
 
         return False
 
-    def append_forced_action(self, paragraphs: list[SCREENPLAY_TYPES]):
+    def append_forced_action(self, paragraphs: list[SCREENPLAY_TYPES]) -> bool:
         if self.lines[0].startswith("!"):
             return self.append_action(paragraphs)
         else:
