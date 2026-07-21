@@ -121,13 +121,11 @@ def main(argv) -> None:
         invalid_format(parser, f'Unsupported output format: "{format}".')
 
     if input_file:
-        input = open(
-            input_file, encoding=args.encoding, errors=args.encoding_errors
-        )
+        input = open(input_file, encoding=args.encoding, errors=args.encoding_errors)
     else:
         input = codecs.getreader(args.encoding)(sys.stdin.buffer)
         input.errors = args.encoding_errors
-    screenplay = fountain.parse(input)
+    screenplay = fountain.parse(input)  # type: ignore[arg-type] # ty: ignore[invalid-argument-type]
 
     if format == "pdf":
         output_encoding = None

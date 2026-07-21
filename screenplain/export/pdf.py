@@ -5,6 +5,7 @@
 import os
 import re
 import sys
+from io import TextIOWrapper
 
 from reportlab import platypus
 from reportlab.lib import colors, pagesizes
@@ -24,7 +25,7 @@ from reportlab.platypus import (
 )
 
 from screenplain import types
-from screenplain.types import Action, Dialog, DualDialog, Slug, Transition
+from screenplain.types import Action, Dialog, DualDialog, Screenplay, Slug, Transition
 
 try:
     import reportlab
@@ -418,8 +419,9 @@ def add_dual_dialog(story, dual, settings: Settings) -> None:
     story.append(table)
 
 
-def get_title_page_story(screenplay, settings):
+def get_title_page_story(screenplay: Screenplay, settings: Settings):
     """Get Platypus flowables for the title page"""
+
     # From Fountain spec:
     # The recommendation is that Title, Credit, Author (or Authors, either
     # is a valid key syntax), and Source will be centered on the page in
@@ -481,7 +483,7 @@ def get_title_page_story(screenplay, settings):
     if not title_story and not lower_story:
         return []
 
-    story = []
+    story: list[Flowable] = []
     top_space = min(
         settings.frame_height / 3.0, settings.frame_height - lower_height - title_height
     )
@@ -531,7 +533,10 @@ def pdf_metadata(screenplay):
 
 
 def to_pdf(
-    screenplay, output_filename, template_constructor=DocTemplate, settings=None
+    screenplay: Screenplay,
+    output_filename: TextIOWrapper,
+    template_constructor: type[DocTemplate] = DocTemplate,
+    settings: Settings | None = None,
 ) -> None:
     settings = settings or create_default_settings()
     story = get_title_page_story(screenplay, settings)
