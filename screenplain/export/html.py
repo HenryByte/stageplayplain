@@ -5,7 +5,7 @@
 import os
 import os.path
 
-from screenplain.richstring import plain
+from screenplain.richstring import RichString, plain
 from screenplain.types import (
     Action,
     Dialog,
@@ -60,7 +60,7 @@ class tag:
         return False
 
 
-def to_html(text):
+def to_html(text: RichString) -> str:
     html = text.to_html()
     if html == "":
         return "&nbsp;"

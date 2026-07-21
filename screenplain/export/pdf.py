@@ -84,10 +84,6 @@ def get_courier_prime_settings() -> FontSettings:
     return s
 
 
-def create_default_settings():
-    return Settings()
-
-
 class Settings:
     # General styles
     default_style: ParagraphStyle
@@ -239,6 +235,10 @@ class Settings:
                 ("LINEBEFORE", (1, 0), (1, 0), 0, colors.white),
             ]
         )
+
+
+def create_default_settings() -> Settings:
+    return Settings()
 
 
 class SlugWithSceneNumbers(Flowable):
