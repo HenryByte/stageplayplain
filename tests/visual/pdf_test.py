@@ -18,7 +18,7 @@ from pathlib import Path
 import screenplain.main
 
 
-def compare(directory) -> bool:
+def compare(directory: str) -> bool:
     """Test that PDF generation produces consistent output."""
     reference_dir = Path(directory)
     fountain_files = list(reference_dir.glob("*.fountain"))

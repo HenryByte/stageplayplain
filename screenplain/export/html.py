@@ -2,8 +2,12 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import os
 import os.path
+from collections.abc import Callable
+from typing import TextIO
 
 from screenplain.richstring import RichString, plain
 from screenplain.types import (
@@ -11,6 +15,7 @@ from screenplain.types import (
     Dialog,
     DualDialog,
     PageBreak,
+    Screenplay,
     Section,
     Slug,
     Transition,
@@ -43,18 +48,23 @@ class tag:
 
     """
 
-    def __init__(self, out, tag, classes=None):
+    def __init__(
+        self, out: TextIO, tag: str, classes: list[str] | set[str] | None = None
+    ) -> None:
         self.out = out
         self.tag = tag
         self.classes = classes
 
-    def __enter__(self):
+    def __enter__(self) -> tag:
         if self.classes:
             self.out.write(f'<{self.tag} class="{" ".join(self.classes)}">')
         else:
             self.out.write(f"<{self.tag}>")
+        return self
 
-    def __exit__(self, exception_type, value, traceback):
+    def __exit__(
+        self, exception_type: object, value: object, traceback: object
+    ) -> bool:
         if not exception_type:
             self.out.write(f"</{self.tag}>")
         return False
@@ -71,7 +81,7 @@ def to_html(text: RichString) -> str:
 class Formatter:
     """Class for converting paragraphs into HTML."""
 
-    def __init__(self, out):
+    def __init__(self, out: TextIO) -> None:
         """Initializes the formatter.
 
         `out` is a file-like object to write to.
@@ -80,7 +90,7 @@ class Formatter:
 
         """
         self.out = out
-        self._format_functions = {
+        self._format_functions: dict[type, Callable[..., None]] = {
             Slug: self.format_slug,
             Action: self.format_action,
             Dialog: self.format_dialog,
@@ -90,7 +100,7 @@ class Formatter:
             PageBreak: self.format_page_break,
         }
 
-    def convert(self, screenplay) -> None:
+    def convert(self, screenplay: Screenplay) -> None:
         """Converts a number of paragraphs into HTML and writes
         it to the output stream.
         `screenplay` is a sequence of paragraphs.
@@ -103,11 +113,11 @@ class Formatter:
                 format_function(para)
                 self.out.write("\n")
 
-    def format_dialog(self, dialog) -> None:
+    def format_dialog(self, dialog: Dialog) -> None:
         with self._tag("div", classes=["dialog"]):
             self._write_dialog_block(dialog)
 
-    def format_dual(self, dual) -> None:
+    def format_dual(self, dual: DualDialog) -> None:
         with self._tag("div", classes=["dual"]):
             with self._tag("div", classes=["left"]):
                 self._write_dialog_block(dual.left)
@@ -115,7 +125,7 @@ class Formatter:
                 self._write_dialog_block(dual.right)
             self.out.write("<br />")
 
-    def _write_dialog_block(self, dialog):
+    def _write_dialog_block(self, dialog: Dialog) -> None:
         with self._tag("p", classes=["character"]):
             self.out.write(to_html(dialog.character))
 
@@ -124,28 +134,28 @@ class Formatter:
             with self._tag("p", classes=classes):
                 self.out.write(to_html(text))
 
-    def format_slug(self, slug) -> None:
+    def format_slug(self, slug: Slug) -> None:
         num = slug.scene_number
         with self._tag("h6"):
             if num:
                 with self._tag("span", classes=["scnuml"]):
-                    self.out.write(to_html(slug.scene_number))
+                    self.out.write(to_html(num))
             self.out.write(to_html(slug.line))
             if num:
                 with self._tag("span", classes=["scnumr"]):
-                    self.out.write(to_html(slug.scene_number))
+                    self.out.write(to_html(num))
         if slug.synopsis:
             with self._tag("span", classes=["h6-synopsis"]):
                 self.out.write(to_html(plain(slug.synopsis)))
 
-    def format_section(self, section) -> None:
+    def format_section(self, section: Section) -> None:
         with self._tag(f"h{section.level}"):
             self.out.write(to_html(section.text))
         if section.synopsis:
             with self._tag("span", classes=[f"h{section.level}-synopsis"]):
                 self.out.write(to_html(plain(section.synopsis)))
 
-    def format_action(self, para) -> None:
+    def format_action(self, para: Action) -> None:
         classes = ["action"]
         if para.centered:
             classes.append("centered")
@@ -156,23 +166,27 @@ class Formatter:
                         self.out.write("<br/>")
                     self.out.write(to_html(line))
 
-    def format_transition(self, para) -> None:
+    def format_transition(self, para: Transition) -> None:
         with self._tag("div", classes=["transition"]):
             self.out.write(to_html(para.line))
 
-    def format_page_break(self, para) -> None:
+    def format_page_break(self, para: PageBreak) -> None:
         self.page_break_before_next = True
 
-    def _tag(self, tag_name, classes=None):
-        if classes is None:
-            classes = []
+    def _tag(self, tag_name: str, classes: list[str] | None = None) -> tag:
+        tag_classes: list[str] | set[str] = classes if classes is not None else []
         if self.page_break_before_next:
             self.page_break_before_next = False
-            classes = set(classes).union(("page-break",))
-        return tag(self.out, tag_name, classes)
+            tag_classes = set(tag_classes).union(("page-break",))
+        return tag(self.out, tag_name, tag_classes)
 
 
-def convert(screenplay, out, css_file=None, bare=False) -> None:
+def convert(
+    screenplay: Screenplay,
+    out: TextIO,
+    css_file: str | None = None,
+    bare: bool = False,
+) -> None:
     """Convert the screenplay into HTML, written to the file-like object `out`.
 
     The output will be a complete HTML document unless `bare` is true.
@@ -188,7 +202,7 @@ def convert(screenplay, out, css_file=None, bare=False) -> None:
         )
 
 
-def convert_full(screenplay, out, css_file) -> None:
+def convert_full(screenplay: Screenplay, out: TextIO, css_file: str) -> None:
     """Convert the screenplay into a complete HTML document,
     written to the file-like object `out`.
 
@@ -204,7 +218,7 @@ def convert_full(screenplay, out, css_file) -> None:
     out.write("</div></body></html>\n")
 
 
-def convert_bare(screenplay, out) -> None:
+def convert_bare(screenplay: Screenplay, out: TextIO) -> None:
     """Convert the screenplay into HTML, written to the file-like object `out`.
     Does not create a complete HTML document, as it doesn't include
     <html>, <body>, etc.

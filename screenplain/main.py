@@ -21,14 +21,14 @@ Screenplain will try to auto-detect the output format if
 an output-file is given. Otherwise use the --format option."""
 
 
-def invalid_format(parser, message) -> None:
+def invalid_format(parser: argparse.ArgumentParser, message: str) -> None:
     formats = " ".join(output_formats)
     parser.error(
         f"{message}\nUse --format with one of the following formats: {formats}"
     )
 
 
-def main(argv) -> None:
+def main(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(
         description=description, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -149,11 +149,11 @@ def main(argv) -> None:
         if out_format == "fdx":
             from screenplain.export.fdx import to_fdx
 
-            to_fdx(screenplay, output)
+            to_fdx(screenplay, output)  # ty: ignore[invalid-argument-type]
         elif out_format == "html":
             from screenplain.export.html import convert
 
-            convert(screenplay, output, css_file=args.css, bare=args.bare)
+            convert(screenplay, output, css_file=args.css, bare=args.bare)  # ty: ignore[invalid-argument-type]
         elif out_format == "pdf":
             from screenplain.export import pdf
 

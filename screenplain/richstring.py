@@ -215,13 +215,13 @@ class _CreateStyledString:
     with a single segment with a specified style.
     """
 
-    def __init__(self, styles: Iterable[type[Style]]):
+    def __init__(self, styles: Iterable[type[Style]]) -> None:
         self.styles = set(styles)
 
     def __call__(self, text: str) -> RichString:
         return RichString(Segment(text, self.styles))
 
-    def __add__(self, other: object):
+    def __add__(self, other: object) -> _CreateStyledString:
         if not isinstance(other, _CreateStyledString):
             return NotImplemented
         return _CreateStyledString(self.styles.union(other.styles))
@@ -287,7 +287,7 @@ def parse_emphasis(source: str) -> RichString:
     segments = []
     pos = 0
 
-    def append(pos, end):
+    def append(pos: int, end: int) -> None:
         if pos == end:
             return
         text = source[pos:end]
