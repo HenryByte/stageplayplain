@@ -3,6 +3,7 @@
 # http://www.opensource.org/licenses/mit-license.php
 
 from io import StringIO
+from typing import override
 from unittest import TestCase
 
 from screenplain.export.fdx import write_text
@@ -10,6 +11,7 @@ from screenplain.richstring import bold, italic, plain
 
 
 class OutputTests(TestCase):
+    @override
     def setUp(self) -> None:
         self.out = StringIO()
 

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TypeAlias
+from typing import TypeAlias, override
 
 from screenplain.richstring import RichString, parse_emphasis
 
@@ -65,7 +65,9 @@ class Screenplay:
 
 
 class Slug:
-    def __init__(self, line: RichString, scene_number: int = None) -> None:
+    def __init__(
+        self, line: RichString, scene_number: RichString | None = None
+    ) -> None:
         """Creates a scene heading (slug).
         The line parameter is a RichString with the slugline.
         The scene_number parameter is an optional RichString.
@@ -91,14 +93,16 @@ class Section:
     ) -> None:
         self.text: RichString = text
         self.level: int = level
-        self.synopsis: str = synopsis
+        self.synopsis: str | None = synopsis
 
     def set_synopsis(self, text: str) -> None:
         self.synopsis = text
 
+    @override
     def __repr__(self) -> str:
         return f"Section({self.text!r}, {self.level!r}, {self.synopsis!r})"
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Section):
             return NotImplemented

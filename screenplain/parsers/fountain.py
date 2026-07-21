@@ -122,16 +122,15 @@ class InputParagraph:
         return True
 
     def append_centered_action(self, paragraphs: list[SCREENPLAY_TYPES]) -> bool:
-        if not all(centered_re.match(line) for line in self.lines):
+        matches = []
+        for line in self.lines:
+            match = centered_re.match(line)
+            if not match:
+                return False
+            matches.append(match.group(1))
+        if not matches:
             return False
-        paragraphs.append(
-            Action(
-                _sequence_to_rich(
-                    centered_re.match(line).group(1) for line in self.lines
-                ),
-                centered=True,
-            )
-        )
+        paragraphs.append(Action(_sequence_to_rich(matches), centered=True))
         return True
 
     def _create_dialog(self, character: str) -> Dialog:
@@ -157,7 +156,8 @@ class InputParagraph:
         if paragraphs and isinstance(paragraphs[-1], Dialog):
             dual_match = dual_dialog_re.match(character)
             if dual_match:
-                previous: Dialog = paragraphs.pop()
+                previous = paragraphs.pop()
+                assert isinstance(previous, Dialog)
                 dialog = self._create_dialog(dual_match.group(1))
                 paragraphs.append(DualDialog(previous, dialog))
                 return True
@@ -208,7 +208,7 @@ class InputParagraph:
             len(self.lines) == 1
             and self.lines[0].startswith("=")
             and paragraphs
-            and hasattr(paragraphs[-1], "set_synopsis")
+            and isinstance(paragraphs[-1], (Slug, Section))
         ):
             paragraphs[-1].set_synopsis(self.lines[0][1:].lstrip())
             return True

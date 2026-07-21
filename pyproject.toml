@@ -7,7 +7,7 @@ name = "screenplain"
 version = "0.12.0"
 description = "Convert text file to viewable screenplay."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = "MIT"
 authors = [
     {name = "Martin Vilcans", email = "screenplain@librador.com"}

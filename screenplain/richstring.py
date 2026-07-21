@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from html import escape as html_escape
+from typing import override
 
 _magic_re = re.compile("[\ue700-\ue705]")
 
@@ -27,11 +28,13 @@ class RichString:
     def __init__(self, *segments: Segment) -> None:
         self.segments = segments
 
+    @override
     def __repr__(self) -> str:
         if not self.segments:
             return "empty_string"
         return " + ".join(repr(s) for s in self.segments)
 
+    @override
     def __str__(self) -> str:
         return "".join(str(s) for s in self.segments)
 
@@ -64,14 +67,16 @@ class RichString:
         else:
             return html
 
+    @override
     def __eq__(self, other: object) -> bool:
         return isinstance(other, RichString) and self.segments == other.segments
 
+    @override
     def __ne__(self, other: object) -> bool:
         return isinstance(other, RichString) and self.segments != other.segments
 
     def __add__(self, other: object) -> RichString:
-        if hasattr(other, "segments"):
+        if isinstance(other, RichString):
             return RichString(*(self.segments + other.segments))
         else:
             raise ValueError("Concatenating requires RichString")
@@ -89,15 +94,18 @@ class Segment:
         self.styles: set[type[Style]] = set(styles)
         self.text: str = text
 
+    @override
     def __repr__(self) -> str:
         styles = (
             "+".join(style.name() for style in self.get_ordered_styles()) or "plain"
         )
         return f"({styles})({self.text!r})"
 
+    @override
     def __str__(self) -> str:
         return self.text
 
+    @override
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Segment)
@@ -105,6 +113,7 @@ class Segment:
             and self.styles == other.styles
         )
 
+    @override
     def __ne__(self, other: object) -> bool:
         return (
             not isinstance(other, Segment)

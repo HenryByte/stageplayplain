@@ -121,8 +121,8 @@ def main(argv) -> None:
         invalid_format(parser, f'Unsupported output format: "{format}".')
 
     if input_file:
-        input = codecs.open(
-            input_file, "r", encoding=args.encoding, errors=args.encoding_errors
+        input = open(
+            input_file, encoding=args.encoding, errors=args.encoding_errors
         )
     else:
         input = codecs.getreader(args.encoding)(sys.stdin.buffer)
@@ -136,7 +136,7 @@ def main(argv) -> None:
 
     if output_file:
         if output_encoding:
-            output = codecs.open(output_file, "w", output_encoding)
+            output = open(output_file, mode="w", encoding=output_encoding)
         else:
             output = open(output_file, "wb")
     else:

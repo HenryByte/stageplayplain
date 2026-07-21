@@ -7,6 +7,7 @@ import os.path
 import re
 import shutil
 import tempfile
+from typing import override
 from unittest import TestCase
 
 from screenplain.main import main
@@ -39,9 +40,11 @@ class FileTests(TestCase):
 
     maxDiff = None
 
+    @override
     def setUp(self) -> None:
         self.dir = tempfile.mkdtemp()
 
+    @override
     def tearDown(self) -> None:
         shutil.rmtree(self.dir)
 

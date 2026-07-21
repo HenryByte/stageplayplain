@@ -101,16 +101,22 @@ class SlugTests(TestCase):
 
     def test_scene_number_is_parsed(self) -> None:
         paras = parse(["EXT SOMEWHERE - DAY #42#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual(plain("EXT SOMEWHERE - DAY"), paras[0].line)
         self.assertEqual(plain("42"), paras[0].scene_number)
 
     def test_only_last_two_hashes_in_slug_used_for_scene_number(self) -> None:
         paras = parse(["INT ROOM #237 #42#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual(plain("42"), paras[0].scene_number)
         self.assertEqual(plain("INT ROOM #237"), paras[0].line)
 
     def test_scene_number_must_be_alphanumeric(self) -> None:
         paras = parse([".SOMEWHERE #*HELLO*#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertIsNone(paras[0].scene_number)
         self.assertEqual(
             plain("SOMEWHERE #") + italic("HELLO") + plain("#"), paras[0].line
@@ -181,6 +187,7 @@ class DialogTests(TestCase):
             )
         ]
         self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         dialog = paras[0]
         self.assertEqual(Dialog, type(dialog))
         self.assertEqual(plain("SOME GUY"), dialog.character)
@@ -241,6 +248,7 @@ class DialogTests(TestCase):
             ]
         )
         self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         dialog = paras[0]
         self.assertEqual(2, len(dialog.blocks))
         self.assertEqual((True, plain("(starting the engine)")), dialog.blocks[0])
@@ -512,7 +520,8 @@ class SynopsisTests(TestCase):
                 "= Set up Brick & Steel's new life.",
             ]
         )
-        self.assertEqual([Slug], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual("Set up Brick & Steel's new life.", paras[0].synopsis)
 
     def test_synopsis_in_section(self) -> None:
