@@ -123,7 +123,7 @@ class Dialog:
         if lines:
             self._parse(lines)
 
-    def _parse(self, lines: list[RichString]):
+    def _parse(self, lines: list[RichString]) -> None:
         inside_parenthesis = False
         for line in lines:
             if line.startswith("("):

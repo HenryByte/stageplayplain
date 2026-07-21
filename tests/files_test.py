@@ -2,6 +2,8 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import os
 import os.path
 import re
@@ -18,12 +20,12 @@ line_break_re = re.compile("\\s*\n\\s*")
 spaces_re = re.compile("[ \t]+")
 
 
-def read_file(path) -> str:
+def read_file(path: str) -> str:
     with open(path, encoding="utf-8") as stream:
         return stream.read()
 
 
-def clean_string(s) -> str:
+def clean_string(s: str) -> str:
     r"""Removes duplicated spaces and line breaks in a string.
 
     >>> clean_string('foo \n  \nbar\n\n')
@@ -48,14 +50,18 @@ class FileTests(TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.dir)
 
-    def source(self, filename) -> str:
+    def source(self, filename: str) -> str:
         return os.path.join(source_dir, filename)
 
-    def target(self, name) -> str:
+    def target(self, name: str) -> str:
         return os.path.join(self.dir, name)
 
     def convert(
-        self, input_file, output_file, expected_results_file, *options
+        self,
+        input_file: str,
+        output_file: str,
+        expected_results_file: str,
+        *options: str,
     ) -> tuple[str, str]:
         input_path = self.source(input_file)
         output_path = self.target(output_file)
@@ -65,7 +71,7 @@ class FileTests(TestCase):
         return clean_string(actual), clean_string(expected)
 
     @classmethod
-    def add_file_case(cls, source_file, expected_results_file) -> None:
+    def add_file_case(cls, source_file: str, expected_results_file: str) -> None:
         """Add a test case that compares the content
         of a generated file with the expected results.
 
@@ -73,7 +79,7 @@ class FileTests(TestCase):
         base, _ = os.path.splitext(source_file)
         extension = os.path.splitext(expected_results_file)[1][1:]
 
-        def test_function(self):
+        def test_function(self: FileTests) -> None:
             actual, expected = self.convert(
                 source_file, base + "." + extension, expected_results_file, "--bare"
             )

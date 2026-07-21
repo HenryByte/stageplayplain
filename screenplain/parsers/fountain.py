@@ -58,7 +58,7 @@ def _string_to_rich(line: str) -> RichString:
 
 
 class InputParagraph:
-    def __init__(self, lines):
+    def __init__(self, lines: list[str]) -> None:
         self.lines = lines
 
     def update_list(self, previous_paragraphs: list[SCREENPLAY_TYPES]) -> None:
@@ -233,7 +233,7 @@ def _preprocess_line(raw_line: str) -> str:
     return raw_line.expandtabs(4).rstrip("\r\n")
 
 
-def _is_blank(line):
+def _is_blank(line: str) -> bool:
     return line == "" or line == " "
 
 
