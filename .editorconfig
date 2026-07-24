@@ -1,0 +1,4 @@
+root = true
+
+[*.fountain]
+trim_trailing_whitespace = false

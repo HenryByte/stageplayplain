@@ -41,13 +41,14 @@ dev = [
 ]
 
 [tool.ruff]
-src = ["./"]
+src = ["."]
+include = ["*.py"]
 
 [tool.ruff.lint]
 select = [
     "A",
     "B",
-    "ANN",
+    "ANN201",
     "F",
     "I",
     "T20",
