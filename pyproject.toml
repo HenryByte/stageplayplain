@@ -48,7 +48,7 @@ include = ["*.py"]
 select = [
     "A",
     "B",
-    "ANN",
+    "ANN201",
     "F",
     "I",
     "T20",
