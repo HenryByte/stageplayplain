@@ -8,6 +8,7 @@ from unittest import TestCase
 from screenplain.parsers import fountain
 from screenplain.richstring import empty_string, italic, plain
 from screenplain.types import (
+    SCREENPLAY_TYPES,
     Action,
     Dialog,
     DualDialog,
@@ -18,7 +19,7 @@ from screenplain.types import (
 )
 
 
-def parse(lines):
+def parse(lines: list[str]) -> list[SCREENPLAY_TYPES]:
     content = "\n".join(lines)
     return list(fountain.parse(StringIO(content)))
 
@@ -32,7 +33,9 @@ class SlugTests(TestCase):
                 "THIS IS JUST ACTION",
             ]
         )
-        self.assertEqual([Slug, Action], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Slug)
+        assert isinstance(paras[1], Action)
 
     def test_slug_must_be_single_line(self) -> None:
         paras = parse(
@@ -43,7 +46,9 @@ class SlugTests(TestCase):
                 "Some action",
             ]
         )
-        self.assertEqual([Dialog, Action], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Dialog)
+        assert isinstance(paras[1], Action)
         # What looks like a scene headingis parsed as a character name.
         # Unexpected perhaps, but that's how I interpreted the spec.
         self.assertEqual(plain("INT. SOMEWHERE - DAY"), paras[0].character)
@@ -56,22 +61,21 @@ class SlugTests(TestCase):
                 "THIS IS JUST ACTION",
             ]
         )
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
 
     def test_two_lines_creates_no_slug(self) -> None:
-        types = [
-            type(p)
-            for p in parse(
-                [
-                    "",
-                    "",
-                    "This is a slug",
-                    "",
-                ]
-            )
-        ]
+        types = parse(
+            [
+                "",
+                "",
+                "This is a slug",
+                "",
+            ]
+        )
         # This used to be Slug. Changed in the Jan 2012 version of the spec.
-        self.assertEqual([Action], types)
+        self.assertEqual(1, len(types))
+        assert isinstance(types[0], Action)
 
     def test_period_creates_slug(self) -> None:
         paras = parse(
@@ -81,7 +85,7 @@ class SlugTests(TestCase):
             ]
         )
         self.assertEqual(1, len(paras))
-        self.assertEqual(Slug, type(paras[0]))
+        assert isinstance(paras[0], Slug)
         self.assertEqual(plain("SNIPER SCOPE POV"), paras[0].line)
 
     def test_more_than_one_period_does_not_create_slug(self) -> None:
@@ -92,24 +96,30 @@ class SlugTests(TestCase):
             ]
         )
         self.assertEqual(1, len(paras))
-        self.assertEqual(Action, type(paras[0]))
+        assert isinstance(paras[0], Action)
         self.assertEqual(plain("..AND THEN..."), paras[0].lines[0])
 
     def test_scene_number_is_parsed(self) -> None:
         paras = parse(["EXT SOMEWHERE - DAY #42#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual(plain("EXT SOMEWHERE - DAY"), paras[0].line)
         self.assertEqual(plain("42"), paras[0].scene_number)
 
     def test_only_last_two_hashes_in_slug_used_for_scene_number(self) -> None:
         paras = parse(["INT ROOM #237 #42#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual(plain("42"), paras[0].scene_number)
         self.assertEqual(plain("INT ROOM #237"), paras[0].line)
 
     def test_scene_number_must_be_alphanumeric(self) -> None:
         paras = parse([".SOMEWHERE #*HELLO*#"])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertIsNone(paras[0].scene_number)
         self.assertEqual(
-            (plain)("SOMEWHERE #") + (italic)("HELLO") + (plain)("#"), paras[0].line
+            plain("SOMEWHERE #") + italic("HELLO") + plain("#"), paras[0].line
         )
 
 
@@ -122,19 +132,27 @@ class SectionTests(TestCase):
                 "## second level",
             ]
         )
-        self.assertEqual([Section, Section], [type(p) for p in paras])
+        assert isinstance(paras[0], Section)
         self.assertEqual(1, paras[0].level)
         self.assertEqual(plain("first level"), paras[0].text)
+
+        assert isinstance(paras[1], Section)
         self.assertEqual(2, paras[1].level)
         self.assertEqual(plain("second level"), paras[1].text)
 
     def test_multiple_sections_in_one_paragraph(self) -> None:
         paras = parse(["# first level", "## second level", "# first level again"])
-        self.assertEqual([Section, Section, Section], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+
+        assert isinstance(paras[0], Section)
         self.assertEqual(1, paras[0].level)
         self.assertEqual(plain("first level"), paras[0].text)
+
+        assert isinstance(paras[1], Section)
         self.assertEqual(2, paras[1].level)
         self.assertEqual(plain("second level"), paras[1].text)
+
+        assert isinstance(paras[2], Section)
         self.assertEqual(1, paras[2].level)
         self.assertEqual(plain("first level again"), paras[2].text)
 
@@ -169,6 +187,7 @@ class DialogTests(TestCase):
             )
         ]
         self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         dialog = paras[0]
         self.assertEqual(Dialog, type(dialog))
         self.assertEqual(plain("SOME GUY"), dialog.character)
@@ -180,7 +199,8 @@ class DialogTests(TestCase):
                 "Bee-bop",
             ]
         )
-        self.assertEqual([Dialog], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         self.assertEqual(plain("R2D2"), paras[0].character)
 
     # Spec http://fountain.io/syntax#section-character:
@@ -193,7 +213,8 @@ class DialogTests(TestCase):
                 "Hello",
             ]
         )
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
 
     # Spec http://fountain.io/syntax#section-character:
     # You can force a Character element by preceding it with the "at" symbol @.
@@ -204,7 +225,8 @@ class DialogTests(TestCase):
                 "Yippee ki-yay",
             ]
         )
-        self.assertEqual([Dialog], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         self.assertEqual(plain("McCLANE"), paras[0].character)
 
     def test_twospaced_line_is_not_character(self) -> None:
@@ -214,7 +236,8 @@ class DialogTests(TestCase):
                 "Where is that pit boss?",
             ]
         )
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
 
     def test_simple_parenthetical(self) -> None:
         paras = parse(
@@ -225,6 +248,7 @@ class DialogTests(TestCase):
             ]
         )
         self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         dialog = paras[0]
         self.assertEqual(2, len(dialog.blocks))
         self.assertEqual((True, plain("(starting the engine)")), dialog.blocks[0])
@@ -239,7 +263,8 @@ class DialogTests(TestCase):
                 "Two",
             ]
         )
-        self.assertEqual([Dialog], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         self.assertEqual(
             [
                 (False, plain("One")),
@@ -259,7 +284,8 @@ class DialogTests(TestCase):
                 "Fuck retirement!",
             ]
         )
-        self.assertEqual([DualDialog], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], DualDialog)
         dual = paras[0]
         self.assertEqual(plain("BRICK"), dual.left.character)
         self.assertEqual([(False, plain("Fuck retirement."))], dual.left.blocks)
@@ -275,6 +301,9 @@ class DialogTests(TestCase):
                 "Nice retirement.",
             ]
         )
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Dialog)
         self.assertEqual([Action, Dialog], [type(p) for p in paras])
         dialog = paras[1]
         self.assertEqual(plain("BRICK ^"), dialog.character)
@@ -290,7 +319,8 @@ class DialogTests(TestCase):
                 " And I'll no longer be a Capulet.",
             ]
         )
-        self.assertEqual([Dialog], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Dialog)
         self.assertEqual(
             [
                 (False, plain("O Romeo, Romeo! wherefore art thou Romeo?")),
@@ -313,7 +343,10 @@ class TransitionTests(TestCase):
                 "EXT. BRICK'S POOL - DAY",
             ]
         )
-        self.assertEqual([Action, Transition, Slug], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Transition)
+        assert isinstance(paras[2], Slug)
 
     def test_transition_must_end_with_to(self) -> None:
         paras = parse(
@@ -323,7 +356,9 @@ class TransitionTests(TestCase):
                 "EXT. BRICK'S POOL - DAY",
             ]
         )
-        self.assertEqual([Action, Slug], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Slug)
 
     def test_transition_needs_to_be_upper_case(self) -> None:
         paras = parse(
@@ -335,7 +370,10 @@ class TransitionTests(TestCase):
                 "EXT. BRICK'S POOL - DAY",
             ]
         )
-        self.assertEqual([Action, Action, Slug], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Action)
+        assert isinstance(paras[2], Slug)
 
     def test_not_a_transition_on_trailing_whitespace(self) -> None:
         paras = parse(
@@ -347,7 +385,10 @@ class TransitionTests(TestCase):
                 "EXT. BRICK'S POOL - DAY",
             ]
         )
-        self.assertEqual([Action, Action, Slug], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Action)
+        assert isinstance(paras[2], Slug)
 
     def test_transition_does_not_have_to_be_followed_by_slug(self) -> None:
         # The "followed by slug" requirement is gone from the Jan 2012 spec
@@ -360,7 +401,10 @@ class TransitionTests(TestCase):
                 "SOME GUY mowing the lawn.",
             ]
         )
-        self.assertEqual([Action, Transition, Action], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Transition)
+        assert isinstance(paras[2], Action)
 
     def test_greater_than_sign_means_transition(self) -> None:
         paras = parse(
@@ -372,7 +416,10 @@ class TransitionTests(TestCase):
                 ".DARKNESS",
             ]
         )
-        self.assertEqual([Action, Transition, Slug], [type(p) for p in paras])
+        self.assertEqual(3, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Transition)
+        assert isinstance(paras[2], Slug)
         self.assertEqual(plain("FADE OUT."), paras[1].line)
 
     def test_centered_text_is_not_parsed_as_transition(self) -> None:
@@ -387,7 +434,9 @@ class TransitionTests(TestCase):
                 "> FADE OUT.",
             ]
         )
-        self.assertEqual([Action, Transition], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Transition)
         self.assertEqual(plain("FADE OUT."), paras[1].line)
 
 
@@ -401,7 +450,9 @@ class ActionTests(TestCase):
                 "   three spaces ",
             ]
         )
-        self.assertEqual([Action, Action], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Action)
         self.assertEqual(
             [
                 plain("  two spaces"),
@@ -412,7 +463,8 @@ class ActionTests(TestCase):
 
     def test_single_centered_line(self) -> None:
         paras = parse(["> center me! <"])
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
         self.assertTrue(paras[0].centered)
 
     def test_full_centered_paragraph(self) -> None:
@@ -422,7 +474,8 @@ class ActionTests(TestCase):
             "> third!< ",
         ]
         paras = parse(lines)
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
         self.assertTrue(paras[0].centered)
         self.assertEqual(
             [
@@ -441,7 +494,8 @@ class ActionTests(TestCase):
                 "> THIRD! <",
             ]
         )
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
         self.assertTrue(paras[0].centered)
 
     def test_centering_marks_in_middle_of_paragraphs_are_verbatim(self) -> None:
@@ -451,7 +505,8 @@ class ActionTests(TestCase):
             "third!",
         ]
         paras = parse(lines)
-        self.assertEqual([Action], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Action)
         self.assertFalse(paras[0].centered)
         self.assertEqual([plain(line) for line in lines], paras[0].lines)
 
@@ -465,19 +520,24 @@ class SynopsisTests(TestCase):
                 "= Set up Brick & Steel's new life.",
             ]
         )
-        self.assertEqual([Slug], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Slug)
         self.assertEqual("Set up Brick & Steel's new life.", paras[0].synopsis)
 
     def test_synopsis_in_section(self) -> None:
         paras = parse(["# section one", "", "= In which we get to know our characters"])
-        self.assertEqual([Section], [type(p) for p in paras])
+        self.assertEqual(1, len(paras))
+        assert isinstance(paras[0], Section)
         self.assertEqual("In which we get to know our characters", paras[0].synopsis)
 
     def test_synopsis_syntax_parsed_as_literal(self) -> None:
         paras = parse(
             ["Some action", "", "= A line that just happens to look like a synopsis"]
         )
-        self.assertEqual([Action, Action], [type(p) for p in paras])
+        self.assertEqual(2, len(paras))
+        assert isinstance(paras[0], Action)
+        assert isinstance(paras[1], Action)
+
         self.assertEqual(
             [plain("= A line that just happens to look like a synopsis")],
             paras[1].lines,
@@ -492,12 +552,14 @@ class TitlePageTests(TestCase):
             "    _**FULL RETIRED**_",
             "Author: Stu Maschwitz",
         ]
+        result = fountain.parse_title_page(lines)
+        assert result is not None
         self.assertDictEqual(
             {
                 "Title": ["_**BRICK & STEEL**_", "_**FULL RETIRED**_"],
                 "Author": ["Stu Maschwitz"],
             },
-            fountain.parse_title_page(lines),
+            result,
         )
 
     def test_multiple_values(self) -> None:
@@ -507,9 +569,11 @@ class TitlePageTests(TestCase):
             "Title:",
             "   (which happens to be true)",
         ]
+        result = fountain.parse_title_page(lines)
+        assert result is not None
         self.assertDictEqual(
             {"Title": ["Death", "- a love story", "(which happens to be true)"]},
-            fountain.parse_title_page(lines),
+            result,
         )
 
     def test_key_casing(self) -> None:
@@ -518,12 +582,14 @@ class TitlePageTests(TestCase):
             "Author: bruce",
             "draft DATE: 1/10/2026",
         ]
+        result = fountain.parse_title_page(lines)
+        assert result is not None
         self.assertDictEqual(
             {
                 "Author": ["bruce"],
                 "Draft date": ["1/10/2026"],
             },
-            fountain.parse_title_page(lines),
+            result,
         )
 
     def test_multiple_values_with_different_case(self) -> None:
@@ -531,6 +597,8 @@ class TitlePageTests(TestCase):
             "Title: Death",
             "title: - a love story",
         ]
+        result = fountain.parse_title_page(lines)
+        assert result is not None
         self.assertDictEqual(
             {
                 "Title": [
@@ -538,7 +606,7 @@ class TitlePageTests(TestCase):
                     "- a love story",
                 ]
             },
-            fountain.parse_title_page(lines),
+            result,
         )
 
     def test_empty_value_ignored(self) -> None:
@@ -546,9 +614,9 @@ class TitlePageTests(TestCase):
             "Title:",
             "Author: John August",
         ]
-        self.assertDictEqual(
-            {"Author": ["John August"]}, fountain.parse_title_page(lines)
-        )
+        result = fountain.parse_title_page(lines)
+        assert result is not None
+        self.assertDictEqual({"Author": ["John August"]}, result)
 
     def test_unparsable_title_page_returns_none(self) -> None:
         lines = [

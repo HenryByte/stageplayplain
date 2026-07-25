@@ -1,4 +1,4 @@
-name: Python build and tests
+name: Pre-commit checks
 
 on:
   push:
@@ -23,8 +23,5 @@ jobs:
       uses: astral-sh/setup-uv@v7
     - name: Install setup uv
       run: uv sync --frozen --dev
-    - name: Test
-      run: uv run pytest --doctest-modules -W error
-    - name: Command-line smoke test
-      run: |
-        uv run screenplain tests/files/simple.fountain /tmp/simple.pdf
+    - name: Run pre-commit
+      uses: j178/prek-action@v1

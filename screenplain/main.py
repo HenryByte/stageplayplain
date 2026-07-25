@@ -21,14 +21,14 @@ Screenplain will try to auto-detect the output format if
 an output-file is given. Otherwise use the --format option."""
 
 
-def invalid_format(parser, message) -> None:
+def invalid_format(parser: argparse.ArgumentParser, message: str) -> None:
     formats = " ".join(output_formats)
     parser.error(
         f"{message}\nUse --format with one of the following formats: {formats}"
     )
 
 
-def main(argv) -> None:
+def main(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(
         description=description, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -104,39 +104,39 @@ def main(argv) -> None:
     except LookupError:
         parser.error(f"Unknown encoding: {args.encoding}")
 
-    format = args.output_format
-    if format is None and output_file:
+    out_format = args.output_format
+    if out_format is None and output_file:
         if output_file.endswith(".fdx"):
-            format = "fdx"
+            out_format = "fdx"
         elif output_file.endswith(".html"):
-            format = "html"
+            out_format = "html"
         elif output_file.endswith(".pdf"):
-            format = "pdf"
+            out_format = "pdf"
         else:
             invalid_format(
                 parser, f"Could not detect output format from file name {output_file}"
             )
 
-    if format not in output_formats:
-        invalid_format(parser, f'Unsupported output format: "{format}".')
+    if out_format not in output_formats:
+        invalid_format(parser, f'Unsupported output format: "{out_format}".')
 
     if input_file:
-        input = codecs.open(
-            input_file, "r", encoding=args.encoding, errors=args.encoding_errors
+        input_stream = open(
+            input_file, encoding=args.encoding, errors=args.encoding_errors
         )
     else:
-        input = codecs.getreader(args.encoding)(sys.stdin.buffer)
-        input.errors = args.encoding_errors
-    screenplay = fountain.parse(input)
+        input_stream = codecs.getreader(args.encoding)(sys.stdin.buffer)
+        input_stream.errors = args.encoding_errors
+    screenplay = fountain.parse(input_stream)  # type: ignore[arg-type] # ty: ignore[invalid-argument-type]
 
-    if format == "pdf":
+    if out_format == "pdf":
         output_encoding = None
     else:
         output_encoding = "utf-8"
 
     if output_file:
         if output_encoding:
-            output = codecs.open(output_file, "w", output_encoding)
+            output = open(output_file, mode="w", encoding=output_encoding)
         else:
             output = open(output_file, "wb")
     else:
@@ -146,15 +146,15 @@ def main(argv) -> None:
             output = sys.stdout.buffer
 
     try:
-        if format == "fdx":
+        if out_format == "fdx":
             from screenplain.export.fdx import to_fdx
 
-            to_fdx(screenplay, output)
-        elif format == "html":
+            to_fdx(screenplay, output)  # ty: ignore[invalid-argument-type]
+        elif out_format == "html":
             from screenplain.export.html import convert
 
-            convert(screenplay, output, css_file=args.css, bare=args.bare)
-        elif format == "pdf":
+            convert(screenplay, output, css_file=args.css, bare=args.bare)  # ty: ignore[invalid-argument-type]
+        elif out_format == "pdf":
             from screenplain.export import pdf
 
             font_settings = None
@@ -163,12 +163,12 @@ def main(argv) -> None:
             settings = pdf.Settings(
                 font_settings=font_settings, strong_slugs=args.strong
             )
-            pdf.to_pdf(screenplay, output, settings=settings)
+            pdf.to_pdf(screenplay, output, settings=settings)  # ty: ignore[invalid-argument-type]
     finally:
         if output_file:
             output.close()
         if input_file:
-            input.close()
+            input_stream.close()
 
 
 def cli() -> None:
