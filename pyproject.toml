@@ -34,10 +34,10 @@ screenplain = "screenplain.main:cli"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.2",
-    "ruff>=0.14.11",
+    "pytest>=9.1.1",
+    "ruff>=0.16.0",
     "setuptools>=82.0.1",
-    "ty>=0.0.53",
+    "ty>=0.0.65",
 ]
 
 [tool.ruff]

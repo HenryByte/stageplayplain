@@ -1,3 +1,0 @@
-#!/bin/bash -e
-uv run pytest --doctest-modules -W error
-uv run ruff check screenplain tests
