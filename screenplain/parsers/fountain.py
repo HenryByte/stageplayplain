@@ -296,7 +296,7 @@ def parse_body(source: Iterator[str]) -> list[SCREENPLAY_TYPES]:
 def parse_title_page(lines: list[str]) -> dict[str, list[str]] | None:
     """Parse the title page.
 
-    Spec: http://fountain.io/syntax#section-titlepage
+    Spec: http://fountain.io/syntax/#title-page
     Returns None if the document does not have a title page section,
     otherwise a dictionary with the data.
 
@@ -310,10 +310,10 @@ def parse_title_page(lines: list[str]) -> dict[str, list[str]] | None:
     it = iter(lines)
     try:
         line = next(it)
+        key_match = title_page_key_re.match(line)
+        if not key_match:
+            return None
         while True:
-            key_match = title_page_key_re.match(line)
-            if not key_match:
-                return None
             key, value = key_match.groups()
             key = key.capitalize()
             if value:
@@ -329,6 +329,10 @@ def parse_title_page(lines: list[str]) -> dict[str, list[str]] | None:
                 else:
                     # Last line has been processed
                     break
+
+            key_match = title_page_key_re.match(line)
+            if not key_match:
+                raise ValueError(f"Invalid title page format on line '{line}'")
     except StopIteration:
         pass
     return result

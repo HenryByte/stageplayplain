@@ -5,6 +5,8 @@
 from io import StringIO
 from unittest import TestCase
 
+import pytest
+
 from screenplain.parsers import fountain
 from screenplain.richstring import empty_string, italic, plain
 from screenplain.types import (
@@ -618,12 +620,15 @@ class TitlePageTests(TestCase):
         assert result is not None
         self.assertDictEqual({"Author": ["John August"]}, result)
 
-    def test_unparsable_title_page_returns_none(self) -> None:
+    def test_unparsable_title_page_raises(self) -> None:
         lines = [
             "Title: Inception",
             "    additional line",
         ]
-        self.assertIsNone(fountain.parse_title_page(lines))
+        with pytest.raises(
+            ValueError, match="Invalid title page format on line '    additional line'"
+        ):
+            fountain.parse_title_page(lines)
 
 
 class PageBreakTests(TestCase):
