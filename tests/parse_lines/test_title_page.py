@@ -77,3 +77,34 @@ def test_empty_source() -> None:
 
     assert {} == screenplay.title_page
     assert [] == screenplay.paragraphs
+
+
+EMPTY_START_TEST = """
+
+Title: My Screenplay
+Author: Your Name
+Contact:
+    your.email@example.com
+    (555) 123-4567
+
+FADE IN:
+
+SPACE"""
+
+
+def test_leading_empty_lines() -> None:
+    screenplay = parse_lines(lines(EMPTY_START_TEST))
+
+    assert isinstance(screenplay, Screenplay)
+    assert {
+        "Title": ["My Screenplay"],
+        "Author": ["Your Name"],
+        "Contact": ["your.email@example.com", "(555) 123-4567"],
+    } == screenplay.title_page
+
+    paras = screenplay.paragraphs
+    assert 2 == len(paras)
+    assert isinstance(paras[0], Action)
+    assert isinstance(paras[1], Action)
+    assert [plain("FADE IN:")] == paras[0].lines
+    assert [plain("SPACE")] == paras[1].lines

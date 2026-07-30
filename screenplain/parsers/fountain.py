@@ -256,6 +256,9 @@ def parse_lines(source: list[str]) -> Screenplay:
     Returns a Screenplay object.
 
     """
+    # Strip the leading blank lines.
+    source: list[str] = list(itertools.dropwhile(lambda s: s.strip() == "", source))
+
     source: Generator[str, Any, None] = (_preprocess_line(line) for line in source)
 
     title_page_lines = list(takewhile(lambda line: line != "", source))
