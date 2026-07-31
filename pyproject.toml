@@ -35,9 +35,15 @@ screenplain = "screenplain.main:cli"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-benchmark>=5.2.3",
     "ruff>=0.16.0",
     "setuptools>=82.0.1",
     "ty>=0.0.65",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "perf: performance benchmarks, excluded from the normal test run",
 ]
 
 [tool.ruff]
