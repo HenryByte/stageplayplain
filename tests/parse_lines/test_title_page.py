@@ -73,10 +73,8 @@ def test_no_title_page() -> None:
 
 
 def test_empty_source() -> None:
-    screenplay = parse_lines([])
-
-    assert {} == screenplay.title_page
-    assert [] == screenplay.paragraphs
+    with pytest.raises(ValueError, match="Invalid fountain syntax: no contents"):
+        parse_lines([])
 
 
 EMPTY_START_TEST = """

@@ -9,6 +9,7 @@ from io import StringIO
 from itertools import takewhile
 from typing import Any
 
+from screenplain.parsers.perf import parse_lines_iter
 from screenplain.richstring import RichString, parse_emphasis, plain
 from screenplain.types import (
     SCREENPLAY_TYPES,
@@ -251,6 +252,11 @@ def parse(stream: StringIO) -> Screenplay:
 
 
 def parse_lines(source: list[str]) -> Screenplay:
+    return parse_lines_iter(source)
+    # return parse_lines_old(source)
+
+
+def parse_lines_old(source: list[str]) -> Screenplay:
     """Reads raw text input and generates paragraph objects.
 
     Returns a Screenplay object.
