@@ -100,7 +100,7 @@ def test_character_with_parenthetical_extension_is_parsed_as_character() -> None
 
 
 TWO_TRAILING_SPACES_SOURCE = """\
-SCANNING THE AISLES...
+SCANNING THE AISLES...  
 Where is that pit boss?
 """
 
