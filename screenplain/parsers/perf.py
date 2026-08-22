@@ -325,6 +325,11 @@ def process_lines(
             return create_slug(command_line, True)
         elif any(regex.match(command_line) for regex in slug_regexes):
             return create_slug(command_line)
+
+        # fast as count() is in c and lines aren't long enough for other options to be faster
+        elif 3 <= len(command_line) == command_line.count("="):
+            return PageBreak()
+
     elif end_idx >= start_idx + 2:
         # There are at least 2 lines
         if command_line[0] == "@":
@@ -390,6 +395,7 @@ def parse_body(source: Sequence[str], source_idx: int) -> list[SCREENPLAY_TYPES]
             paragraphs.append(value)
             break
 
+    # import itertools
     # for blank, input_lines in itertools.groupby(itertools.islice(source, tmp_idx, None), _is_blank):
     #     if not blank:
     #         as_string = note_re.sub("", "\n".join(input_lines))
