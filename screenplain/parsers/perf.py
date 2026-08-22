@@ -383,7 +383,12 @@ def parse_body(source: Sequence[str], source_idx: int) -> list[SCREENPLAY_TYPES]
             print(value)
             paragraphs.append(value)
             start_idx = source_idx
-            continue
+        elif source_idx == len(source):
+            # We've hit the end of the file
+            value = process_lines(source, start_idx, source_idx, paragraphs)
+            print(value)
+            paragraphs.append(value)
+            break
 
     # for blank, input_lines in itertools.groupby(itertools.islice(source, tmp_idx, None), _is_blank):
     #     if not blank:
