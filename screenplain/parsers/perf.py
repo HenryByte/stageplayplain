@@ -301,7 +301,7 @@ def create_dialog(
 
 def process_lines(
     lines: Sequence[str], start_idx: int, end_idx: int, state: list[SCREENPLAY_TYPES]
-) -> SCREENPLAY_TYPES:
+) -> SCREENPLAY_TYPES | None:
     command_line = lines[start_idx]
     if command_line[0] == "!":
         # A forced action
@@ -317,12 +317,58 @@ def process_lines(
         else:
             # Transition
             pass
+    elif command_line[0] == "#":
+        print("here")
+
+        idx = start_idx
+        while True:
+            if idx >= end_idx:
+                break
+            line = lines[idx]
+            print(f"line {line}")
+
+            idx += 1
+            # This is a set of sections
+            if line[0] == "#":
+                space_idx = line.find(" ")
+                if space_idx == -1:
+                    raise ValueError(f"Section has no space after the '#': '{line}'")
+                section_lvl = line[:space_idx].count("#")
+                if section_lvl > 6:
+                    raise ValueError(f"Section has too many '#' characters: '{line}'")
+                if section_lvl == space_idx:
+                    print(f"line {line[space_idx:].lstrip()}")
+                    state.append(
+                        Section(_string_to_rich(line[space_idx:].lstrip()), space_idx)
+                    )
+                    # We also check if the following line is a synopsis
+                    if idx < end_idx and lines[idx][0] == "=":
+                        if not isinstance(state[-1], Section):
+                            raise RuntimeError(
+                                "The order is incorrect, create a bug report."
+                            )
+                        state[-1].set_synopsis(lines[idx][1:].lstrip())
+                        idx += 1
+            else:
+                raise ValueError(
+                    f"Section needs to be followed by an empty line or synopsis: '{line}'"
+                )
+        return None
+
     elif start_idx == end_idx - 1:
         # Only stuff with a single line
 
+        if state:
+            print(state[-1])
         # Scene header
         if command_line[0] == ".":
             return create_slug(command_line, True)
+        elif command_line[0] == "=" and (
+            state and isinstance(state[-1], (Slug, Section))
+        ):
+            # Synopsis for a Slug or Section
+            state[-1].set_synopsis(command_line[1:].lstrip())
+            return None
         elif any(regex.match(command_line) for regex in slug_regexes):
             return create_slug(command_line)
 
@@ -385,14 +431,16 @@ def parse_body(source: Sequence[str], source_idx: int) -> list[SCREENPLAY_TYPES]
                 continue
             # We've hit the end of a type, store it
             value = process_lines(source, start_idx, end_idx, paragraphs)
-            print(value)
-            paragraphs.append(value)
+            if value is not None:
+                print(value)
+                paragraphs.append(value)
             start_idx = source_idx
         elif source_idx == len(source):
             # We've hit the end of the file
             value = process_lines(source, start_idx, source_idx, paragraphs)
-            print(value)
-            paragraphs.append(value)
+            if value is not None:
+                print(value)
+                paragraphs.append(value)
             break
 
     # import itertools
