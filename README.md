@@ -53,6 +53,42 @@ As there is no output filename, you have to specify which format to output, e.g.
 
     screenplain --format=fdx screenplay.fountain
 
+Stage plays
+===========
+
+Screenplain can also format a Fountain file as a stage play, in the style of a
+published acting edition (A4, EB Garamond). Add `Format: Stage Play` to the
+title page, or pass `--stageplay`:
+
+    Title: The Visitor
+    Author: Jane Doe
+    Format: Stage Play
+
+    # Dramatis Personae
+
+    @Mary
+    A teacher.
+
+    # Time
+
+    The present.
+
+    ===
+
+    # Act One
+
+    ## The Drawing Room
+
+    Lights up. @Mary sits alone.
+
+    @Mary
+    Did you hear that?
+
+Everything before the first `===` is front matter; `#` headings after it are
+acts and `##` headings are scenes. `@Name` marks a character, both as a cue and
+inside stage directions. PDF and HTML output are supported; FDX is not yet.
+See [stageplaywrite.spec.md](stageplaywrite.spec.md) for the full syntax.
+
 Credits
 =======
 

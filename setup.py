@@ -29,7 +29,14 @@ setup(
         "screenplain.export",
         "screenplain.parsers",
     ],
-    package_data={"screenplain.export": ["default.css", "courier_prime/**"]},
+    package_data={
+        "screenplain.export": [
+            "default.css",
+            "stageplay.css",
+            "courier_prime/**",
+            "eb_garamond/**",
+        ]
+    },
     entry_points={"console_scripts": ["screenplain = screenplain.main:cli"]},
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -9,6 +9,8 @@ import codecs
 import sys
 
 from screenplain.parsers import fountain
+from screenplain.stageplay import is_stageplay, to_stageplay
+from screenplain.types import StagePlay
 
 output_formats = ("fdx", "html", "pdf")
 
@@ -63,6 +65,14 @@ def main(argv: list[str]) -> None:
         ),
     )
     parser.add_argument(
+        "--stageplay",
+        action="store_true",
+        help=(
+            "Format the input as a stage play, even if its title page "
+            "has no 'Format: Stage Play' key."
+        ),
+    )
+    parser.add_argument(
         "--strong",
         action="store_true",
         help=("For PDF output, scene headings will appear Bold and Underlined."),
@@ -71,7 +81,8 @@ def main(argv: list[str]) -> None:
         "--standard-font",
         action="store_true",
         help=(
-            "For PDF output, use the standard Courier font instead of Courier Prime."
+            "For PDF output, use the standard Courier font instead of Courier Prime "
+            "(Times instead of EB Garamond for stage plays)."
         ),
     )
     parser.add_argument(
@@ -128,6 +139,13 @@ def main(argv: list[str]) -> None:
         input_stream = codecs.getreader(args.encoding)(sys.stdin.buffer)
         input_stream.errors = args.encoding_errors
     screenplay = fountain.parse(input_stream)  # type: ignore[arg-type] # ty: ignore[invalid-argument-type]
+    stageplay = (
+        to_stageplay(screenplay) if args.stageplay or is_stageplay(screenplay) else None
+    )
+    if stageplay and out_format == "fdx":
+        if input_file:
+            input_stream.close()
+        parser.error("Stage play output is not yet supported for fdx")
 
     if out_format == "pdf":
         output_encoding = None
@@ -146,7 +164,9 @@ def main(argv: list[str]) -> None:
             output = sys.stdout.buffer
 
     try:
-        if out_format == "fdx":
+        if stageplay:
+            convert_stageplay(stageplay, out_format, output, args)
+        elif out_format == "fdx":
             from screenplain.export.fdx import to_fdx
 
             to_fdx(screenplay, output)  # ty: ignore[invalid-argument-type]
@@ -169,6 +189,23 @@ def main(argv: list[str]) -> None:
             output.close()
         if input_file:
             input_stream.close()
+
+
+def convert_stageplay(
+    play: StagePlay, out_format: str, output: object, args: argparse.Namespace
+) -> None:
+    if out_format == "html":
+        from screenplain.export.html import convert_stageplay
+
+        convert_stageplay(play, output, css_file=args.css, bare=args.bare)  # ty: ignore[invalid-argument-type]
+    elif out_format == "pdf":
+        from screenplain.export import stageplay_pdf
+
+        font_settings = None
+        if args.standard_font:
+            font_settings = stageplay_pdf.get_standard_font_settings()
+        settings = stageplay_pdf.StagePlaySettings(font_settings=font_settings)
+        stageplay_pdf.to_pdf(play, output, settings=settings)  # ty: ignore[invalid-argument-type]
 
 
 def cli() -> None:
