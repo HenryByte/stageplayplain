@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from typing import override
 
 from screenplain.richstring import RichString, parse_emphasis
@@ -160,3 +161,89 @@ class Transition:
 
 class PageBreak:
     pass
+
+
+# Stage play types. See screenplain/stageplay.py for how a parsed Screenplay
+# is restructured into a StagePlay.
+
+
+@dataclass
+class CharacterName:
+    """A character name referenced inline in a stage direction with `@`."""
+
+    name: RichString
+
+
+@dataclass
+class StageDirection:
+    """An action paragraph in a stage play.
+
+    Each line is a sequence of parts: plain text or inline character names.
+    """
+
+    lines: list[list[RichString | CharacterName]]
+
+
+@dataclass
+class Act:
+    text: RichString
+
+
+@dataclass
+class Scene:
+    text: RichString
+
+
+@dataclass
+class CastMember:
+    name: RichString
+    description: list[RichString] = field(default_factory=list)
+
+
+@dataclass
+class CastGroup:
+    title: RichString
+
+
+@dataclass
+class CastList:
+    """A front matter section listing the characters of the play."""
+
+    title: RichString
+    entries: list[CastMember | CastGroup | StageDirection] = field(default_factory=list)
+
+
+type FRONT_MATTER_PARAGRAPH_TYPES = StageDirection | Section | SCREENPLAY_TYPES
+
+
+@dataclass
+class FrontMatterSection:
+    """A generic front matter section, such as Notes, Time or Setting.
+
+    `title` is None for front matter text before the first heading.
+    """
+
+    title: RichString | None
+    paragraphs: list[FRONT_MATTER_PARAGRAPH_TYPES] = field(default_factory=list)
+
+
+type STAGEPLAY_TYPES = (
+    Act | Scene | StageDirection | Dialog | DualDialog | Action | Transition | PageBreak
+)
+
+
+class StagePlay(Screenplay):
+    """A stage play: title page, front matter and the play body.
+
+    Iterating over a StagePlay yields nothing; use `body` instead.
+    """
+
+    def __init__(
+        self,
+        title_page: dict[str, list[str]] | None = None,
+        front_matter: list[FrontMatterSection | CastList] | None = None,
+        body: list[STAGEPLAY_TYPES] | None = None,
+    ) -> None:
+        super().__init__(title_page)
+        self.front_matter: list[FrontMatterSection | CastList] = front_matter or []
+        self.body: list[STAGEPLAY_TYPES] = body or []

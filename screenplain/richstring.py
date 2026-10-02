@@ -61,11 +61,18 @@ class RichString:
         return self.segments[-1].text.endswith(string)
 
     def to_html(self) -> str:
-        html = "".join(seg.to_html() for seg in self.segments)
+        html = self.to_inline_html()
         if html.startswith(" "):
             return "&nbsp;" + html[1:]
         else:
             return html
+
+    def to_inline_html(self) -> str:
+        """Like to_html, but keeps a leading space as a normal space,
+        for text that continues a line rather than starting one.
+
+        """
+        return "".join(seg.to_html() for seg in self.segments)
 
     @override
     def __eq__(self, other: object) -> bool:

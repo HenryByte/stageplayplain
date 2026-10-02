@@ -1,0 +1,103 @@
+/* Reset */
+html,body,div,span,h1,h2,h3,p,em,strong,u {
+margin: 0;
+padding: 0;
+border: 0;
+font-size: 100%;
+font: inherit;
+vertical-align: baseline;
+}
+
+/* Styles for Screenplain stage plays (acting edition) */
+body {
+background: white;
+color: black;
+}
+#wrapper {
+font-family: "EB Garamond", Garamond, Georgia, serif;
+font-size: 12pt;
+line-height: 1.25;
+max-width: 34em;
+margin: 0 auto;
+padding: 2em 1em;
+}
+em {
+font-style: italic;
+}
+strong {
+font-weight: bold;
+}
+u {
+text-decoration: underline;
+}
+
+.title-page {
+text-align: center;
+margin: 6em 0;
+}
+.title-page .title {
+font-size: 200%;
+}
+
+.front-matter h2,
+.scene {
+font-variant: small-caps;
+text-align: center;
+margin: 2.5em 0 1.25em;
+}
+.front-matter h3 {
+font-style: italic;
+text-align: center;
+margin: 1.25em 0 0.6em;
+}
+.prose {
+margin-top: 0.6em;
+}
+.cast-member {
+margin-top: 0.3em;
+}
+
+.play {
+page-break-before: always;
+margin-top: 4em;
+}
+.act {
+font-size: 125%;
+text-transform: uppercase;
+text-align: center;
+margin: 3em 0 2.5em;
+}
+.character,
+.cue {
+font-variant: small-caps;
+font-style: normal;
+}
+.direction {
+font-style: italic;
+margin: 0.6em 0 0.6em 2em;
+}
+.speech {
+margin-top: 0.6em;
+padding-left: 1.5em;
+text-indent: -1.5em;
+}
+.centered {
+text-align: center;
+margin-top: 1.25em;
+}
+.transition {
+text-align: right;
+margin-top: 1.25em;
+}
+.dual {
+display: flex;
+gap: 1em;
+}
+.dual > div {
+flex: 1;
+}
+
+.act,
+.page-break {
+page-break-before: always;
+}
