@@ -1,0 +1,44 @@
+Title: Edges
+
+/* a boneyard
+spanning
+four lines */
+[[FSE STAGE type=proscenium width=10 depth=6 units=m]]
+
+# ACT ONE
+
+= a synopsis [[FSE MOVE hamlet pos=0,0]]
+
+[[FSE PRESET hamlet pos=1,1]]
+
+Action first [[FSE PRESET hamlet pos=2,2]] then more.
+
+[[FSE ENTER horatio
+      from=vom-a pos=0,3]]
+HORATIO
+Glued above the cue, so this is action now.
+
+HAMLET [[FSE MOVE pos=1,1]]
+(aside) [[FSE MOVE pos=2,2]]
+Words one two [[FSE MOVE pos=3,3]] three.
+[[FSE ARRIVE hamlet]]
+
+BRICK
+Left side.
+
+STEEL ^
+Right [[FSE MOVE pos=4,4]] side.
+
+~Sing a song [[FSE MOVE ophelia pos=5,5]] of sixpence
+
+INT. HOUSE - DAY [[FSE STRIKE all]]
+
+[[FSE STRIKE all; PRESET hamlet pos=0,0]]
+
+[[FSE MOVE hamlet pos=1,1
+
+Still printed.
+
+CUT TO: [[FSE EXIT hamlet via=vom-a]]
+
+[[fse lowercase is an ordinary note]] [[ordinary]]
