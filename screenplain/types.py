@@ -56,6 +56,7 @@ class Screenplay:
         title_page: dict[str, list[str]] | None = None,
         paragraphs: list[SCREENPLAY_TYPES] | None = None,
         title_page_notes: list[Note] | None = None,
+        unclosed_notes: list[Note] | None = None,
     ) -> None:
         """
         Create a Screenplay object.
@@ -76,8 +77,15 @@ class Screenplay:
         else:
             self.paragraphs: list[SCREENPLAY_TYPES] = paragraphs
 
-        # Notes on title page lines that hold nothing but notes
+        # Every note on the title page. Those on lines holding nothing but
+        # notes are removed from `title_page`; others stay in its values.
         self.title_page_notes: list[Note] = title_page_notes or []
+
+        # Every `[[` with no `]]` after it before an empty line or the end
+        # of the script. Fountain does not treat these as notes, so their
+        # text stays in the element they are in. `text` is everything after
+        # the `[[` up to the end of its paragraph.
+        self.unclosed_notes: list[Note] = unclosed_notes or []
 
     def get_rich_attribute(
         self, name: str, default: list[RichString] | None = None
@@ -163,6 +171,8 @@ class Dialog:
         self.character: RichString = character
         self.blocks = []  # list of tuples of (is_parenthetical, text)
         self.notes: list[InlineNote] = []
+        # The 1-based source line of the character cue, when parsed.
+        self.line: int | None = None
         if lines:
             self._parse(lines)
 

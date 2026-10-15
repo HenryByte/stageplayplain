@@ -1,0 +1,10 @@
+/* expect: 10: error: E04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sl type=entrance pos=6,0]]
+[[FSE ENTITY sr type=entrance pos=-6,0]]
+[[FSE ENTITY skull type=prop pos=0,0]]
+
+INT. HALL
+
+[[FSE EXIT skull via=sl]]

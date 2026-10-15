@@ -1,0 +1,24 @@
+[[FSE STAGE type=flexible width=10 depth=10]]
+[[FSE ENTITY door type=entrance pos=-5,0]]
+[[FSE ENTITY horatio type=cast]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+[[FSE ENTITY lantern type=prop]]
+[[FSE ENTITY trolley type=prop]]
+[[FSE ENTITY cup type=prop on=trolley]]
+[[FSE ENTITY label type=prop label="A \"quoted\" label; with a semicolon" on=cup]]
+
+INT. HALL
+
+[[FSE SET lantern with=horatio]]
+[[FSE ENTER horatio from=door pos=-1,0]]
+
+HORATIO
+(raising the lantern)
+[[FSE SET lantern pos=-0.5,0 by=horatio]] My lord.
+
+[[FSE ENTER trolley from=door]]
+[[FSE MOVE trolley pos=-4,0 by=crew]]
+[[FSE SET cup with=hamlet]]
+
+HAMLET
+[[FSE SET cup on=trolley]] Thank you.

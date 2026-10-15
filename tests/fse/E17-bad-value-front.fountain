@@ -1,0 +1,4 @@
+/* expect: 3: error: E17 */
+
+[[FSE STAGE type=round radius=6 front=vom-b]]
+[[FSE ENTITY vom-b type=entrance pos=5.2,3]]

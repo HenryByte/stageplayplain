@@ -1,0 +1,9 @@
+/* expect: 7: error: E21 */
+
+INT. HALL
+
+Hamlet waits.
+
+[[FSE MOVE hamlet pos=1,2
+
+He waits.

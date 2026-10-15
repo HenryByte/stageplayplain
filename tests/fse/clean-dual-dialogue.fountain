@@ -1,0 +1,12 @@
+[[FSE STAGE type=proscenium width=10 depth=8]]
+[[FSE ENTITY wing type=entrance pos=6,0]]
+[[FSE ENTITY brick type=cast pos=-1,0]]
+[[FSE ENTITY steel type=cast]]
+
+INT. HALL
+
+BRICK
+Screw retirement. [[FSE MOVE pos=0,0]]
+
+STEEL ^
+[[FSE ENTER from=wing pos=1,0]] Screw retirement.

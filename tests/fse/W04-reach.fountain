@@ -1,0 +1,9 @@
+/* expect: 9: warning: W04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+[[FSE ENTITY skull type=prop pos=3,0]]
+
+INT. HALL
+
+[[FSE SET skull with=hamlet by=hamlet]]

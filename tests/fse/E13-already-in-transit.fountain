@@ -1,0 +1,12 @@
+/* expect: 12: error: E13 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+[[FSE MOVE hamlet pos=-4,0 until=arrive]]
+
+Hamlet hesitates.
+
+[[FSE MOVE hamlet pos=4,0]]

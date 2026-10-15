@@ -1,0 +1,15 @@
+/* expect: 11: warning: W07 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+HAMLET
+Who's there?
+
+GHOST
+Mark me.
+
+GHOST
+I am thy father's spirit.

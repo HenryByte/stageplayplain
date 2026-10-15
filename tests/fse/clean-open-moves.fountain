@@ -1,0 +1,32 @@
+[[FSE STAGE type=traverse width=12 depth=6]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+[[FSE ENTITY ophelia type=cast pos=1,1]]
+[[FSE ENTITY lantern type=prop with=hamlet]]
+[[FSE ENTITY ophelia-mark type=mark pos=2,2]]
+
+INT. A ROOM IN THE CASTLE
+
+[[FSE MOVE hamlet pos=-4,0 until=arrive; MOVE ophelia pos=2,2 until=arrive]]
+
+HAMLET
+Ha, ha! Are you honest?
+
+OPHELIA
+My lord?
+
+HAMLET
+Are you fa[[FSE ARRIVE ophelia]]ir?
+
+OPHELIA
+What means your lordship?
+
+[[FSE VIA hamlet pos=-2,2]]
+
+HAMLET
+That if you be honest and fair, your honesty should
+admit no discourse to your beauty.
+
+[[FSE ARRIVE hamlet facing=ophelia-mark]]
+[[FSE MOVE hamlet pos=0,0 until=arrive]]
+[[FSE VIA hamlet pos=1,0]]
+[[FSE ARRIVE hamlet]]

@@ -1,0 +1,15 @@
+/* expect: 9: warning: W02 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast]]
+[[FSE ENTITY sl type=entrance pos=6,0]]
+
+INT. HALL
+
+HAMLET
+To be.
+
+[[FSE ENTER hamlet from=sl]]
+
+HAMLET
+Or not to be.

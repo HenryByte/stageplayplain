@@ -1,0 +1,5 @@
+/* expect: 5: warning: W03 */
+
+[[FSE STAGE type=round radius=5]]
+[[FSE ENTITY vom type=entrance pos=0,-7]]
+[[FSE ENTITY hamlet type=cast pos=3.6,3.6]]

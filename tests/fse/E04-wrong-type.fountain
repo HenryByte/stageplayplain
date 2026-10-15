@@ -1,0 +1,10 @@
+/* expect: 10: error: E04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+[[FSE ENTITY skull type=prop pos=1,1]]
+[[FSE ENTITY table type=prop pos=2,2]]
+
+INT. HALL
+
+[[FSE SET skull with=table]]

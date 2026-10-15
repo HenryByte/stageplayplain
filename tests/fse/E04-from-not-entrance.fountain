@@ -1,0 +1,9 @@
+/* expect: 9: error: E04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY centre type=mark pos=0,0]]
+[[FSE ENTITY hamlet type=cast]]
+
+INT. HALL
+
+[[FSE ENTER hamlet from=centre]]

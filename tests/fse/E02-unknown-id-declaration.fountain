@@ -1,0 +1,4 @@
+/* expect: 4: error: E02 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY skull type=prop on=table]]

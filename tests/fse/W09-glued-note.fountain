@@ -1,0 +1,16 @@
+/* expect: 10: warning: W09 */
+/* expect: 16: warning: W09 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast]]
+[[FSE ENTITY sl type=entrance pos=6,0]]
+
+INT. HALL
+
+[[FSE ENTER hamlet from=sl pos=0,3]]
+HAMLET
+Alas, poor Yorick!
+
+HAMLET
+Are you fair?
+[[FSE MOVE pos=1,2]]

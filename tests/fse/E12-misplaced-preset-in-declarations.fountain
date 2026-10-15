@@ -1,0 +1,5 @@
+/* expect: 5: error: E12 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast]]
+[[FSE PRESET hamlet pos=1,1]]

@@ -1,0 +1,8 @@
+/* expect: 8: error: E10 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+[[FSE MOVE hamlet pos=1,1; SET hamlet facing=90]]

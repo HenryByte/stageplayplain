@@ -1,0 +1,10 @@
+/* expect: 5: warning: W03 */
+/* expect: 10: warning: W03 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY far type=mark pos=0,9]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+[[FSE MOVE hamlet pos=5.5,0]]
