@@ -43,6 +43,7 @@ VARIANTS = {
     "A": "Numbered key (technical ground plan)",
     "B": "Small plan + cast/prop table",
     "C": "Labelled sketch, no key",
+    "D": "A's drawing at B's size, right-hand side",
 }
 
 
@@ -163,6 +164,7 @@ def draw_stage(c, f, fill=0.94, audience=True, font=("Helvetica", 5)):
 
 class PlanA(Flowable):
     W, H = 60 * mm, 42 * mm
+    PER_LINE, PAD, KEY_FONT = 3, 8, 5.5
 
     def __init__(self, blocking, state):
         super().__init__()
@@ -171,7 +173,7 @@ class PlanA(Flowable):
         self.off = [
             e for e in entities(blocking, (Cast, Prop)) if not state.onstage(e.id)
         ]
-        self.key_lines = 1 + len(self.props) // 3 + (1 if self.off else 0)
+        self.key_lines = -(-len(self.props) // self.PER_LINE) + (1 if self.off else 0)
 
     def wrap(self, aw, ah):
         return self.W, self.H + self.key_lines * 7
@@ -181,7 +183,7 @@ class PlanA(Flowable):
         kh = self.key_lines * 7
         c.saveState()
         c.translate(0, kh)
-        f = Frame(b, self.W, self.H, 8)
+        f = Frame(b, self.W, self.H, self.PAD)
         c.setStrokeGray(0)
         c.setLineWidth(0.5)
         c.rect(0, 0, self.W, self.H)
@@ -240,7 +242,7 @@ class PlanA(Flowable):
             c.drawCentredString(x, y - 1.4, initials(cast))
         c.restoreState()
         # key under the box
-        c.setFont("Helvetica", 5.5)
+        c.setFont("Helvetica", self.KEY_FONT)
         y = kh - 6
         line = []
         for i, p in enumerate(self.props, 1):
@@ -252,7 +254,7 @@ class PlanA(Flowable):
                 else extra
             )
             line.append(f"{i} {name(p)}{extra}")
-            if len(line) == 3:
+            if len(line) == self.PER_LINE:
                 c.drawString(0, y, "   ".join(line))
                 y, line = y - 7, []
         if line:
@@ -261,6 +263,33 @@ class PlanA(Flowable):
         if self.off:
             c.setFillGray(0.4)
             c.drawString(0, y, "Off: " + ", ".join(name(e) for e in self.off))
+
+
+class PlanD(PlanA):
+    """A's drawing at B's plan size; key one per line; right-aligned."""
+
+    W, H = 34 * mm, 30 * mm
+    PER_LINE, PAD, KEY_FONT = 1, 6, 5
+
+    def __init__(self, blocking, state):
+        super().__init__(blocking, state)
+        self.hAlign = "RIGHT"
+        # one offstage name per line too, so the key fits the plan width
+        self.key_lines += max(len(self.off) - 1, 0)
+
+    def draw(self):
+        off, self.off = self.off, []
+        super().draw()
+        self.off = off
+        if off:
+            c = self.canv
+            c.setFillGray(0.4)
+            c.setFont("Helvetica", self.KEY_FONT)
+            y = len(off) * 7 - 6
+            c.drawString(0, y, "Off: " + name(off[0]))
+            for e in off[1:]:
+                y -= 7
+                c.drawString(13, y, name(e))
 
 
 # --- variant B: small plan + table -----------------------------------------
@@ -426,6 +455,8 @@ class PlanC(Flowable):
 def make_plan(variant, blocking, state, width):
     if variant == "A":
         return PlanA(blocking, state)
+    if variant == "D":
+        return PlanD(blocking, state)
     if variant == "B":
         return PlanB(blocking, state, width)
     return PlanC(blocking, state)
