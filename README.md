@@ -89,6 +89,33 @@ acts and `##` headings are scenes. `@Name` marks a character, both as a cue and
 inside stage directions. PDF and HTML output are supported; FDX is not yet.
 See [stageplaywrite.spec.md](stageplaywrite.spec.md) for the full syntax.
 
+Stage blocking (FSE)
+====================
+
+A script can carry machine-readable stage blocking in Fountain notes that
+begin with `FSE` (the Fountain Stage Extension). Other tools show them as
+ordinary notes, and Screenplain leaves them out of every output:
+
+    [[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+    [[FSE ENTITY sl type=entrance pos=6,0]]
+    [[FSE ENTITY hamlet type=cast]]
+
+    INT. A CHURCHYARD
+
+    [[FSE ENTER hamlet from=sl pos=3,1]]
+
+    HAMLET
+    [[FSE MOVE pos=0,0]] Alas, poor Yorick!
+
+Screenplain checks the blocking before writing any output and reports
+problems on standard error, compiler style:
+
+    play.fountain:9: error: E05 not-onstage: MOVE hamlet pos=1,2 — hamlet is offstage
+
+An error stops the conversion (exit code 1) and leaves any existing output
+file untouched. Warnings are printed but don't stop it; `--no-warnings`
+hides them. Scripts without FSE notes are not affected.
+
 Credits
 =======
 

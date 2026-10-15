@@ -1,0 +1,11 @@
+/* expect: 10: error: E12 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sl type=entrance pos=6,0]]
+[[FSE ENTITY sr type=entrance pos=-6,0]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+HAMLET [[FSE MOVE hamlet pos=1,1]]
+To be.

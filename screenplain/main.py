@@ -8,9 +8,10 @@ import argparse
 import codecs
 import sys
 
+from screenplain import fse
 from screenplain.parsers import fountain
 from screenplain.stageplay import is_stageplay, to_stageplay
-from screenplain.types import StagePlay
+from screenplain.types import Screenplay, StagePlay
 
 output_formats = ("fdx", "html", "pdf")
 
@@ -97,6 +98,11 @@ def main(argv: list[str]) -> None:
         choices=["strict", "ignore", "replace", "backslashreplace", "surrogateescape"],
         help="How to handle invalid character codes in the input file",
     )
+    parser.add_argument(
+        "--no-warnings",
+        action="store_true",
+        help="Don't print warnings about FSE stage blocking. Errors still print.",
+    )
     args = parser.parse_args(argv)
 
     # Handle dash as stdin/stdout
@@ -139,13 +145,18 @@ def main(argv: list[str]) -> None:
         input_stream = codecs.getreader(args.encoding)(sys.stdin.buffer)
         input_stream.errors = args.encoding_errors
     screenplay = fountain.parse(input_stream)  # type: ignore[arg-type] # ty: ignore[invalid-argument-type]
-    stageplay = (
-        to_stageplay(screenplay) if args.stageplay or is_stageplay(screenplay) else None
-    )
-    if stageplay and out_format == "fdx":
-        if input_file:
-            input_stream.close()
+    if input_file:
+        input_stream.close()
+    as_stageplay = args.stageplay or is_stageplay(screenplay)
+    if as_stageplay and out_format == "fdx":
         parser.error("Stage play output is not yet supported for fdx")
+
+    # FSE runs before the output is opened, so an error leaves it untouched.
+    # The Blocking is not used yet: every output is Script mode.
+    if fse.has_fse_notes(screenplay):
+        process_fse(screenplay, input_file or "<stdin>", args.no_warnings)
+
+    stageplay = to_stageplay(screenplay) if as_stageplay else None
 
     if out_format == "pdf":
         output_encoding = None
@@ -187,8 +198,25 @@ def main(argv: list[str]) -> None:
     finally:
         if output_file:
             output.close()
-        if input_file:
-            input_stream.close()
+
+
+def process_fse(screenplay: Screenplay, path: str, no_warnings: bool) -> None:
+    """Processes a script's FSE notes, printing reports to stderr.
+
+    Raises SystemExit(1) on an error.
+    """
+    try:
+        warnings = fse.process(screenplay).reports
+        error = None
+    except fse.FseError as exception:
+        warnings, error = exception.warnings, exception.report
+    if not no_warnings:
+        for report in warnings:
+            print(report.format(path), file=sys.stderr)
+    if error:
+        print(error.format(path), file=sys.stderr)
+        print("screenplain: no output written (1 error)", file=sys.stderr)
+        raise SystemExit(1)
 
 
 def convert_stageplay(

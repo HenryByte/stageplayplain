@@ -1,0 +1,3 @@
+/* expect: 3: error: E17 */
+
+[[FSE STAGE type=proscenium width=0 depth=8]]

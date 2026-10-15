@@ -1,0 +1,6 @@
+/* expect: 4: error: E12 */
+
+Title: Hamlet
+[[FSE STAGE type=proscenium width=10 depth=8]]
+
+Text.

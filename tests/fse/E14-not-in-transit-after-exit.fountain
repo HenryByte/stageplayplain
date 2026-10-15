@@ -1,0 +1,15 @@
+/* expect: 15: error: E14 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sl type=entrance pos=6,0]]
+[[FSE ENTITY sr type=entrance pos=-6,0]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+[[FSE MOVE hamlet pos=-4,0 until=arrive]]
+
+Hamlet thinks better of it.
+
+[[FSE EXIT hamlet via=sl]]
+[[FSE VIA hamlet pos=1,1]]

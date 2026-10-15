@@ -97,9 +97,16 @@ def _offset(raw: str, column: int, start: int, source: str, upper: bool = False)
 
 
 class InputParagraph:
-    def __init__(self, lines: list[str], notes: list[_CutNote] | None = None) -> None:
+    def __init__(
+        self,
+        lines: list[str],
+        notes: list[_CutNote] | None = None,
+        line: int | None = None,
+    ) -> None:
         self.lines = lines
         self.notes = notes or []
+        # The 1-based source line of the first line, when known.
+        self.line = line
 
     def _add_note(
         self,
@@ -225,6 +232,7 @@ class InputParagraph:
             parse_emphasis(character.strip()),
             _sequence_to_rich(line.strip() for line in self.lines[1:]),
         )
+        dialog.line = self.line
         for note in self.notes:
             if note.row == 0:
                 text, part = character, "character"
@@ -408,8 +416,9 @@ def parse_lines(
     title_page_lines = lines[:end]
 
     title_page_notes: list[Note] = []
+    unclosed_notes: list[Note] = []
     if title_page_lines and title_page_key_re.match(title_page_lines[0]):
-        title_page_lines, title_page_notes = _cut_title_page_notes(
+        title_page_lines, title_page_notes, unclosed_notes = _cut_title_page_notes(
             title_page_lines, line_numbers
         )
 
@@ -422,48 +431,58 @@ def parse_lines(
     if title_page:
         # The first lines were a title page.
         # Parse the rest of the source as screenplay body.
-        return Screenplay(
-            title_page,
-            parse_body(lines[end + 1 :], line_numbers[end + 1 :]),
-            title_page_notes,
+        paragraphs = parse_body(
+            lines[end + 1 :], line_numbers[end + 1 :], unclosed_notes
         )
+        return Screenplay(title_page, paragraphs, title_page_notes, unclosed_notes)
     else:
         # The first lines were not a title page.
         # Parse them as part of the screenplay body.
-        return Screenplay({}, parse_body(lines, line_numbers))
+        unclosed_notes = []
+        paragraphs = parse_body(lines, line_numbers, unclosed_notes)
+        return Screenplay({}, paragraphs, unclosed_notes=unclosed_notes)
 
 
 def _cut_title_page_notes(
     lines: list[str], line_numbers: Sequence[int]
-) -> tuple[list[str], list[Note]]:
+) -> tuple[list[str], list[Note], list[Note]]:
     """Removes the title page lines that hold nothing but notes.
 
-    Returns the remaining lines and the removed notes.
+    Returns the remaining lines, every note on the title page, and the
+    unclosed notes in it.
     """
     content = "\n".join(lines)
     notes: list[Note] = []
+    unclosed: list[Note] = []
+    if "[[" in content:
+        _, cut_notes, unclosed = _cut_notes(content, line_numbers)
+        notes = [Note(note.text, note.line) for note in cut_notes]
+
+    cut_any = False
 
     def cut(match: re.Match[str]) -> str:
-        for note in note_re.finditer(match.group(0)):
-            row = content.count("\n", 0, match.start() + note.start())
-            notes.append(Note(note.group(1), line_numbers[row]))
+        nonlocal cut_any
+        cut_any = True
         return ""
 
     content = title_page_note_line_re.sub(cut, content)
-    if not notes:
-        return lines, notes
+    if not cut_any:
+        return lines, notes, unclosed
     # A note-only last line leaves the line break before it.
     remaining = content.removesuffix("\n")
-    return (remaining.split("\n") if remaining else []), notes
+    return (remaining.split("\n") if remaining else []), notes, unclosed
 
 
 def parse_body(
-    source: list[str], line_numbers: Sequence[int] | None = None
+    source: list[str],
+    line_numbers: Sequence[int] | None = None,
+    unclosed_notes: list[Note] | None = None,
 ) -> list[SCREENPLAY_TYPES]:
     """Reads lines of the main screenplay and generates paragraph objects.
 
     `line_numbers` gives the 1-based source line number of each line
-    and defaults to counting from 1.
+    and defaults to counting from 1. Unclosed notes are appended to
+    `unclosed_notes` when it is given.
     """
     if line_numbers is None:
         line_numbers = range(1, len(source) + 1)
@@ -478,17 +497,21 @@ def parse_body(
             continue
         as_string = "\n".join(input_lines)
         if "[[" not in as_string:
-            InputParagraph(as_string.split("\n")).update_list(paragraphs)
+            InputParagraph(as_string.split("\n"), line=line_numbers[start]).update_list(
+                paragraphs
+            )
             continue
 
-        as_string, notes = _cut_notes(as_string, line_numbers[start:end])
+        as_string, notes, unclosed = _cut_notes(as_string, line_numbers[start:end])
+        if unclosed_notes is not None:
+            unclosed_notes += unclosed
         if notes and as_string.strip() == "":
             # A standalone note, or several stacked.
             paragraphs += [Note(note.text, note.line) for note in notes]
             continue
         if _is_blank(as_string):
             continue
-        paragraph = InputParagraph(as_string.split("\n"), notes)
+        paragraph = InputParagraph(as_string.split("\n"), notes, line_numbers[start])
         paragraph.update_list(paragraphs)
 
     return paragraphs
@@ -496,18 +519,30 @@ def parse_body(
 
 def _cut_notes(
     paragraph: str, line_numbers: Sequence[int]
-) -> tuple[str, list[_CutNote]]:
+) -> tuple[str, list[_CutNote], list[Note]]:
     """Cuts every note out of a paragraph whose lines have the source line
     numbers `line_numbers`.
 
-    Returns the paragraph without notes and the notes in source order.
+    Returns the paragraph without notes, the notes in source order, and
+    the unclosed notes: each `[[` left with no `]]` after it, which stays
+    in the paragraph.
     """
     pieces: list[str] = []
     notes: list[_CutNote] = []
     row = 0
     column = 0
     pos = 0
+    unclosed: list[Note] = []
+
+    def find_unclosed(start: int, end: int) -> None:
+        index = paragraph.find("[[", start, end)
+        while index != -1:
+            line = line_numbers[paragraph.count("\n", 0, index)]
+            unclosed.append(Note(paragraph[index + 2 :], line))
+            index = paragraph.find("[[", index + 2, end)
+
     for match in note_re.finditer(paragraph):
+        find_unclosed(pos, match.start())
         piece = paragraph[pos : match.start()]
         pieces.append(piece)
         if "\n" in piece:
@@ -518,8 +553,9 @@ def _cut_notes(
         line = line_numbers[paragraph.count("\n", 0, match.start())]
         notes.append(_CutNote(match.group(1), line, row, column))
         pos = match.end()
+    find_unclosed(pos, len(paragraph))
     pieces.append(paragraph[pos:])
-    return "".join(pieces), notes
+    return "".join(pieces), notes, unclosed
 
 
 def parse_title_page(lines: list[str]) -> dict[str, list[str]] | None:

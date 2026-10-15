@@ -1,0 +1,21 @@
+/* expect: 14: warning: W01 */
+/* expect: 15: warning: W01 */
+/* expect: 16: warning: W01 */
+/* expect: 17: warning: W01 */
+/* expect: 18: warning: W01 */
+/* expect: 19: warning: W01 */
+/* expect: 21: warning: W01 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+
+INT. HALL
+
+[[FSE MOVE hamlet pos=1,2;; ARRIVE hamlet]]
+[[FSE MOVE hamlet pos="1,2]]
+[[FSE MOVE hamlet 1,2]]
+[[FSE MOVE hamlet pos=]]
+[[FSE MOVE hamlet =1,2]]
+[[FSE SET skull label="a
+b"]]
+[[FSE ]]

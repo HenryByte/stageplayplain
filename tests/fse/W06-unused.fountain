@@ -1,0 +1,10 @@
+/* expect: 7: warning: W06 */
+/* expect: 8: warning: W06 */
+/* expect: 9: warning: W06 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY hamlet type=cast pos=0,0]]
+[[FSE ENTITY ghost type=cast]]
+[[FSE ENTITY dagger type=prop on=cushion]]
+[[FSE ENTITY cushion type=prop]]
+[[FSE ENTITY centre type=mark pos=0,0]]

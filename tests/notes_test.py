@@ -304,3 +304,45 @@ def test_stage_play_drops_standalone_notes() -> None:
     assert isinstance(section, FrontMatterSection)
     assert [] == section.paragraphs
     assert [StageDirection([[plain("Go.")]])] == play.body
+
+
+def test_notes_on_title_page_value_lines_are_kept_in_both() -> None:
+    screenplay = parse_screenplay("Title: T [[a]]\n[[b]]\n\nText")
+    assert {"Title": ["T [[a]]"]} == screenplay.title_page
+    assert [Note("a", 1), Note("b", 2)] == screenplay.title_page_notes
+
+
+# Unclosed notes
+
+
+def test_unclosed_note_stays_in_the_text() -> None:
+    screenplay = parse_screenplay("Before\n\nHe [[waits\nlong\n\nAfter")
+    assert [Note("waits\nlong", 3)] == screenplay.unclosed_notes
+    action = screenplay.paragraphs[1]
+    assert isinstance(action, Action)
+    assert [plain("He [[waits"), plain("long")] == action.lines
+
+
+def test_unclosed_note_after_a_closed_one() -> None:
+    screenplay = parse_screenplay("[[a]] and [[b")
+    assert [Note("b", 1)] == screenplay.unclosed_notes
+    assert [InlineNote("a", 1, 0, 0)] == action_notes("[[a]] and [[b")
+
+
+def test_note_closed_on_a_later_line_is_not_unclosed() -> None:
+    assert [] == parse_screenplay("He [[waits\nlong]] here").unclosed_notes
+
+
+def test_unclosed_note_on_the_title_page() -> None:
+    screenplay = parse_screenplay("Title: T [[FSE\n\nText")
+    assert [Note("FSE", 1)] == screenplay.unclosed_notes
+
+
+# Dialogue lines
+
+
+def test_dialogue_records_its_line() -> None:
+    paras = parse("\nINT. HALL\n\nBOB\nHi.\n\nJIM ^\nHo.")
+    _, dual = paras
+    assert isinstance(dual, DualDialog)
+    assert (4, 7) == (dual.left.line, dual.right.line)

@@ -1,0 +1,7 @@
+/* expect: 5: warning: W01 */
+
+INT. HALL
+
+[[FSE move hamlet pos=1,2]]
+
+Hamlet waits.

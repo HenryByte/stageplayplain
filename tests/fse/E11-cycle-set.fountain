@@ -1,0 +1,9 @@
+/* expect: 9: error: E11 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY box type=prop pos=0,0]]
+[[FSE ENTITY lid type=prop on=box]]
+
+INT. HALL
+
+[[FSE SET box on=lid]]

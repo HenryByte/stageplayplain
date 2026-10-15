@@ -1,0 +1,34 @@
+[[FSE STAGE type=round width=10 depth=8 units=ft front=booth]]
+[[FSE ENTITY booth type=mark pos=0,-4]]
+[[FSE ENTITY wing type=entrance pos=-6,0]]
+[[FSE ENTITY throne type=prop pos=0,3]]
+[[FSE ENTITY crown type=prop on=throne]]
+[[FSE ENTITY claudius type=cast]]
+[[FSE ENTITY gertrude type=cast]]
+
+# ACT ONE
+
+## Scene 1
+
+[[FSE ENTER claudius from=wing pos=0,2 facing=180]]
+
+CLAUDIUS
+Though yet of Hamlet our dear brother's death
+The memory be green.
+
+[[FSE EXIT all via=wing]]
+
+## Scene 2
+
+[[FSE STRIKE all;
+      PRESET throne pos=0,4;
+      PRESET claudius pos=0,3 facing=0,-5]]
+[[FSE PRESET gertrude pos=1,3; PRESET crown with=gertrude]]
+
+===
+
+CLAUDIUS (V.O.)
+How is it that the clouds still hang on you?
+
+[[FSE STRIKE throne by=crew; SET gertrude facing=-90]]
+[[FSE EXIT claudius via=wing]]
