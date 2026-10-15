@@ -27,6 +27,7 @@ setup(
     packages=[
         "screenplain",
         "screenplain.export",
+        "screenplain.fse",
         "screenplain.parsers",
     ],
     package_data={
