@@ -21,7 +21,7 @@ from collections.abc import Iterable
 
 from screenplain.richstring import RichString, Segment, plain
 from screenplain.types import (
-    SCREENPLAY_TYPES,
+    ELEMENT_TYPES,
     STAGEPLAY_TYPES,
     Act,
     Action,
@@ -32,6 +32,7 @@ from screenplain.types import (
     Dialog,
     DualDialog,
     FrontMatterSection,
+    Note,
     PageBreak,
     Scene,
     Screenplay,
@@ -110,14 +111,19 @@ def strip_continuation(cue: str) -> str:
 
 
 def to_stageplay(screenplay: Screenplay) -> StagePlay:
-    """Converts a parsed screenplay into a StagePlay."""
-    paragraphs = list(screenplay)
+    """Converts a parsed screenplay into a StagePlay.
+
+    Standalone notes are dropped, since no stage play exporter shows them.
+    """
+    paragraphs: list[ELEMENT_TYPES] = [
+        para for para in screenplay if not isinstance(para, Note)
+    ]
     boundary = next(
         (i for i, para in enumerate(paragraphs) if isinstance(para, PageBreak)),
         None,
     )
     if boundary is None:
-        front_paragraphs: list[SCREENPLAY_TYPES] = []
+        front_paragraphs: list[ELEMENT_TYPES] = []
         body_paragraphs = paragraphs
     else:
         front_paragraphs = paragraphs[:boundary]
@@ -131,7 +137,7 @@ def to_stageplay(screenplay: Screenplay) -> StagePlay:
     )
 
 
-def _dialogs(paragraphs: Iterable[SCREENPLAY_TYPES]) -> Iterable[Dialog]:
+def _dialogs(paragraphs: Iterable[ELEMENT_TYPES]) -> Iterable[Dialog]:
     for para in paragraphs:
         if isinstance(para, Dialog):
             yield para
@@ -140,9 +146,7 @@ def _dialogs(paragraphs: Iterable[SCREENPLAY_TYPES]) -> Iterable[Dialog]:
             yield para.right
 
 
-def _collect_names(
-    front: list[SCREENPLAY_TYPES], body: list[SCREENPLAY_TYPES]
-) -> list[str]:
+def _collect_names(front: list[ELEMENT_TYPES], body: list[ELEMENT_TYPES]) -> list[str]:
     """Collects known character names from dialogue cues and the cast list,
     longest first so that the longest match wins.
     """
@@ -162,7 +166,7 @@ def _is_cast_list_title(title: RichString) -> bool:
 
 
 def _front_matter(
-    paragraphs: list[SCREENPLAY_TYPES], names: list[str]
+    paragraphs: list[ELEMENT_TYPES], names: list[str]
 ) -> list[FrontMatterSection | CastList]:
     sections: list[FrontMatterSection | CastList] = []
     current: FrontMatterSection | CastList | None = None
@@ -189,7 +193,7 @@ def _front_matter(
 
 
 def _cast_entries(
-    para: SCREENPLAY_TYPES, names: list[str]
+    para: ELEMENT_TYPES, names: list[str]
 ) -> list[CastMember | CastGroup | StageDirection]:
     if isinstance(para, Section):
         return [CastGroup(para.text)]
@@ -226,7 +230,7 @@ def _strip_cue(dialog: Dialog) -> Dialog:
     return result
 
 
-def _body_paragraph(para: SCREENPLAY_TYPES, names: list[str]) -> STAGEPLAY_TYPES:
+def _body_paragraph(para: ELEMENT_TYPES, names: list[str]) -> STAGEPLAY_TYPES:
     if isinstance(para, Section):
         return Act(para.text) if para.level == 1 else Scene(para.text)
     if isinstance(para, Slug):

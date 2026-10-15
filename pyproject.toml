@@ -75,4 +75,4 @@ all = "error"
 
 [tool.ty.src]
 include = ["./"]
-exclude = ["./**/*.fdx", "./**/*.fountain"]
+exclude = ["./**/*.fdx", "./**/*.fountain", "./build/"]

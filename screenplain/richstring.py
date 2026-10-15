@@ -313,3 +313,50 @@ def parse_emphasis(source: str) -> RichString:
     append(pos, len(source))
 
     return RichString(*segments)
+
+
+def emphasis_offset(source: str, index: int) -> int:
+    """Maps an index into `source` to an index into the text of
+    `parse_emphasis(source)`: the number of rendered characters that
+    come from `source[:index]`. Emphasis markers and the backslash of
+    an escaped star render as nothing.
+
+    >>> emphasis_offset('**fair**', 4)
+    2
+    >>> emphasis_offset('**fair**', 8)
+    4
+    >>> emphasis_offset(r'a\\*b', 3)
+    2
+    """
+    # Mirrors parse_emphasis, keeping the source index of every character.
+    # Inserted magic characters have the index None.
+    text = _unescape(source)
+    indices: list[int | None] = []
+    i = 0
+    while i < len(source):
+        indices.append(i + 1 if source.startswith("\\*", i) else i)
+        i += 2 if source.startswith("\\*", i) else 1
+
+    for style in all_styles:
+        new_text: list[str] = []
+        new_indices: list[int | None] = []
+        pos = 0
+        for match in style.parse_re.finditer(text):
+            start, end = match.span(1)
+            new_text += [text[pos : match.start()], style.start_magic]
+            new_text += [text[start:end], style.end_magic]
+            new_indices += [*indices[pos : match.start()], None]
+            new_indices += [*indices[start:end], None]
+            pos = match.end()
+        new_text.append(text[pos:])
+        new_indices += indices[pos:]
+        text = "".join(new_text)
+        indices = new_indices
+
+    return sum(
+        1
+        for char, source_index in zip(text, indices, strict=True)
+        if source_index is not None
+        and source_index < index
+        and not _magic_re.match(char)
+    )
