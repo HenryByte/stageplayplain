@@ -1,0 +1,43 @@
+Title: The Parlour (PROTOTYPE fixture)
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=proscenium width=10 depth=7 units=m]]
+[[FSE ENTITY door-sl type=entrance pos=5.5,1]]
+[[FSE ENTITY door-sr type=entrance pos=-5.5,1]]
+[[FSE ENTITY french-windows type=entrance pos=0,3.8]]
+[[FSE ENTITY dsc type=mark pos=0,-2.5]]
+[[FSE ENTITY fireplace type=mark pos=-4,2.5]]
+[[FSE ENTITY mary type=cast]]
+[[FSE ENTITY arthur type=cast]]
+[[FSE ENTITY inspector type=cast cue="INSPECTOR GOOLE"]]
+[[FSE ENTITY edna type=cast]]
+[[FSE ENTITY gerald type=cast]]
+[[FSE ENTITY sofa type=prop pos=-1,0 label="Sofa"]]
+[[FSE ENTITY table type=prop pos=2.5,1.5 label="Dining table"]]
+[[FSE ENTITY chair type=prop pos=3.2,0.6]]
+[[FSE ENTITY decanter type=prop on=table]]
+[[FSE ENTITY photograph type=prop]]
+[[FSE ENTITY letter type=prop on=table]]
+
+## Scene 1
+
+[[FSE PRESET mary pos=-1,0.3 facing=dsc; PRESET arthur pos=fireplace facing=90; PRESET gerald pos=3.2,0.6 facing=270; PRESET photograph with=inspector]]
+
+!@Mary sits on the sofa. @Arthur warms himself at the fire. @Gerald reads.
+
+MARY
+Arthur, do stop fidgeting.
+
+[[FSE ENTER inspector from=door-sl pos=3.5,-1.5 facing=250]]
+
+INSPECTOR GOOLE
+Good evening.
+
+## Scene 2
+
+[[FSE PRESET mary pos=dsc facing=180; PRESET gerald; PRESET arthur pos=-2,1.8; PRESET edna pos=4,2.5 facing=270; PRESET letter with=edna]]
+
+EDNA
+A letter came for you, ma'am.

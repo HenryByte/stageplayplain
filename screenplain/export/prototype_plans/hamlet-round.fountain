@@ -1,0 +1,42 @@
+Title: Hamlet (FSE excerpt)
+Author: William Shakespeare
+
+[[FSE STAGE type=round radius=6 units=m front=vom-a]]
+[[FSE ENTITY vom-a type=entrance pos=0,-6]]
+[[FSE ENTITY vom-b type=entrance pos=5.2,3]]
+[[FSE ENTITY vom-c type=entrance pos=-5.2,3]]
+[[FSE ENTITY grave type=mark pos=0,0]]
+[[FSE ENTITY graveside type=mark pos=1.2,-0.5]]
+[[FSE ENTITY hamlet type=cast]]
+[[FSE ENTITY horatio type=cast]]
+[[FSE ENTITY first-gravedigger type=cast cue="FIRST GRAVEDIGGER"]]
+[[FSE ENTITY spade type=prop with=first-gravedigger]]
+[[FSE ENTITY skull type=prop pos=grave]]
+[[FSE ENTITY lantern type=prop]]
+
+.ACT V, SCENE I - A CHURCHYARD
+
+[[FSE PRESET first-gravedigger pos=grave facing=vom-a]]
+
+The FIRST GRAVEDIGGER digs, singing.
+
+[[FSE ENTER hamlet from=vom-b pos=3,1; ENTER horatio from=vom-b pos=3.5,2; SET lantern with=horatio]]
+
+HAMLET
+Has this fellow no feeling of his business, that he sings at grave-making?
+
+The gravedigger throws up a skull.
+
+[[FSE SET skull pos=graveside by=first-gravedigger]]
+
+HAMLET
+[[FSE MOVE pos=graveside facing=grave]] Let me see. [[FSE SET skull with=hamlet]] Alas, poor Yorick! I knew him, Horatio.
+
+[[FSE SET skull pos=grave by=hamlet]]
+[[FSE EXIT hamlet via=vom-c; EXIT horatio via=vom-c]]
+
+.ACT V, SCENE II - A HALL IN THE CASTLE
+
+[[FSE PRESET first-gravedigger; PRESET skull]]
+
+[[FSE ENTER hamlet from=vom-a pos=0,-2; ENTER horatio from=vom-a pos=1,-3]]

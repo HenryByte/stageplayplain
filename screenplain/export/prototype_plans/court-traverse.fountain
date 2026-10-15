@@ -1,0 +1,20 @@
+Title: Court (PROTOTYPE fixture)
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=traverse width=12 depth=4 units=m]]
+[[FSE ENTITY end-l type=entrance pos=-6.8,0]]
+[[FSE ENTITY end-r type=entrance pos=6.8,0]]
+[[FSE ENTITY dock type=mark pos=-4,0]]
+[[FSE ENTITY bench type=prop pos=4.5,0]]
+[[FSE ENTITY judge type=cast]]
+[[FSE ENTITY accused type=cast]]
+[[FSE ENTITY gavel type=prop on=bench]]
+
+## Scene 1
+
+[[FSE PRESET judge pos=4.5,0.6 facing=270; PRESET accused pos=dock facing=90]]
+
+JUDGE
+Be seated.
