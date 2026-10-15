@@ -1,0 +1,41 @@
+Title: The Ballroom (PROTOTYPE fixture: large cast)
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=proscenium width=12 depth=8 units=m]]
+[[FSE ENTITY door-sl type=entrance pos=6.5,1]]
+[[FSE ENTITY door-sr type=entrance pos=-6.5,1]]
+[[FSE ENTITY stairs type=entrance pos=0,4.5]]
+[[FSE ENTITY dsc type=mark pos=0,-3]]
+[[FSE ENTITY lady-b type=cast cue="LADY BRACKNELL"]]
+[[FSE ENTITY jack type=cast]]
+[[FSE ENTITY algernon type=cast]]
+[[FSE ENTITY gwendolen type=cast]]
+[[FSE ENTITY cecily type=cast]]
+[[FSE ENTITY chasuble type=cast cue="DR CHASUBLE"]]
+[[FSE ENTITY prism type=cast cue="MISS PRISM"]]
+[[FSE ENTITY lane type=cast]]
+[[FSE ENTITY merriman type=cast]]
+[[FSE ENTITY piano type=prop pos=-4,2.5 label="Grand piano"]]
+[[FSE ENTITY settee type=prop pos=-1,0 label="Settee"]]
+[[FSE ENTITY tea-table type=prop pos=2.5,1 label="Tea table"]]
+[[FSE ENTITY armchair type=prop pos=3.5,-0.5 label="Armchair"]]
+[[FSE ENTITY teapot type=prop on=tea-table label="Silver teapot"]]
+[[FSE ENTITY sandwiches type=prop on=tea-table label="Cucumber sandwiches"]]
+[[FSE ENTITY muffins type=prop on=tea-table]]
+[[FSE ENTITY handbag type=prop label="Black leather handbag"]]
+[[FSE ENTITY diary type=prop]]
+[[FSE ENTITY cigarette-case type=prop label="Cigarette case"]]
+
+## Scene 1
+
+[[FSE PRESET jack pos=-1,0.3 facing=dsc; PRESET algernon pos=-4,2 facing=90; PRESET gwendolen pos=3.5,-0.5 facing=270; PRESET lane pos=2.5,2 facing=180; PRESET cigarette-case with=algernon; PRESET diary with=gwendolen]]
+
+!@Algernon plays the piano badly. @Lane lays out tea.
+
+ALGERNON
+Did you hear what I was playing, Lane?
+
+LANE
+I didn't think it polite to listen, sir.
