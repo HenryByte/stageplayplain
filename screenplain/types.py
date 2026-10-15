@@ -10,9 +10,44 @@ from typing import override
 
 from screenplain.richstring import RichString, parse_emphasis
 
-type SCREENPLAY_TYPES = (
+# The paragraph types that are script elements, i.e. everything but notes.
+type ELEMENT_TYPES = (
     Slug | Section | Dialog | DualDialog | Action | Transition | PageBreak
 )
+
+type SCREENPLAY_TYPES = ELEMENT_TYPES | Note
+
+
+@dataclass
+class Note:
+    """A Fountain note that is a paragraph of its own (a standalone note).
+
+    `text` is everything between `[[` and `]]`; `line` is the 1-based
+    source line the note starts on. Exporters skip it.
+    """
+
+    text: str
+    line: int
+
+
+@dataclass
+class InlineNote:
+    """A Fountain note inside another paragraph.
+
+    `part` says which part of the paragraph the note sits in, and depends
+    on the paragraph type: an index into `Action.lines` or `Dialog.blocks`,
+    `"character"` for a dialogue's character cue, `"synopsis"` for the
+    synopsis of a `Slug` or `Section`, or None where the paragraph has a
+    single line (`Slug`, `Section`, `Transition`) or no text (`PageBreak`).
+
+    `offset` counts characters of `str()` of that part before the note.
+    It is None for a synopsis and a page break.
+    """
+
+    text: str
+    line: int
+    part: int | str | None
+    offset: int | None
 
 
 class Screenplay:
@@ -20,6 +55,7 @@ class Screenplay:
         self,
         title_page: dict[str, list[str]] | None = None,
         paragraphs: list[SCREENPLAY_TYPES] | None = None,
+        title_page_notes: list[Note] | None = None,
     ) -> None:
         """
         Create a Screenplay object.
@@ -39,6 +75,9 @@ class Screenplay:
             self.paragraphs: list[SCREENPLAY_TYPES] = []
         else:
             self.paragraphs: list[SCREENPLAY_TYPES] = paragraphs
+
+        # Notes on title page lines that hold nothing but notes
+        self.title_page_notes: list[Note] = title_page_notes or []
 
     def get_rich_attribute(
         self, name: str, default: list[RichString] | None = None
@@ -77,6 +116,7 @@ class Slug:
         self.line: RichString = line
         self.scene_number = scene_number
         self.synopsis = None
+        self.notes: list[InlineNote] = []
 
     @property
     def lines(self) -> list[RichString]:
@@ -95,6 +135,7 @@ class Section:
         self.text: RichString = text
         self.level: int = level
         self.synopsis: str | None = synopsis
+        self.notes: list[InlineNote] = []
 
     def set_synopsis(self, text: str) -> None:
         self.synopsis = text
@@ -121,6 +162,7 @@ class Dialog:
     ) -> None:
         self.character: RichString = character
         self.blocks = []  # list of tuples of (is_parenthetical, text)
+        self.notes: list[InlineNote] = []
         if lines:
             self._parse(lines)
 
@@ -148,11 +190,13 @@ class Action:
     def __init__(self, lines: list[RichString], centered: bool = False) -> None:
         self.lines: list[RichString] = lines
         self.centered = centered
+        self.notes: list[InlineNote] = []
 
 
 class Transition:
     def __init__(self, line: RichString) -> None:
         self.line = line
+        self.notes: list[InlineNote] = []
 
     @property
     def lines(self) -> list[RichString]:
@@ -160,7 +204,8 @@ class Transition:
 
 
 class PageBreak:
-    pass
+    def __init__(self) -> None:
+        self.notes: list[InlineNote] = []
 
 
 # Stage play types. See screenplain/stageplay.py for how a parsed Screenplay
@@ -213,7 +258,7 @@ class CastList:
     entries: list[CastMember | CastGroup | StageDirection] = field(default_factory=list)
 
 
-type FRONT_MATTER_PARAGRAPH_TYPES = StageDirection | Section | SCREENPLAY_TYPES
+type FRONT_MATTER_PARAGRAPH_TYPES = StageDirection | Section | ELEMENT_TYPES
 
 
 @dataclass
