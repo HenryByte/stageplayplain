@@ -7,6 +7,7 @@
 import argparse
 import codecs
 import sys
+from typing import NoReturn
 
 from screenplain import fse
 from screenplain.parsers import fountain
@@ -103,6 +104,12 @@ def main(argv: list[str]) -> None:
         action="store_true",
         help="Don't print warnings about FSE stage blocking. Errors still print.",
     )
+    parser.add_argument(
+        "--blocking",
+        action="store_true",
+        help="For PDF output, draw a plan of the stage at the top of each scene "
+        "from the script's FSE notes.",
+    )
     args = parser.parse_args(argv)
 
     # Handle dash as stdin/stdout
@@ -136,6 +143,8 @@ def main(argv: list[str]) -> None:
 
     if out_format not in output_formats:
         invalid_format(parser, f'Unsupported output format: "{out_format}".')
+    if args.blocking and out_format != "pdf":
+        parser.error(f"--blocking is only supported for pdf, not {out_format}")
 
     if input_file:
         input_stream = open(
@@ -152,9 +161,15 @@ def main(argv: list[str]) -> None:
         parser.error("Stage play output is not yet supported for fdx")
 
     # FSE runs before the output is opened, so an error leaves it untouched.
-    # The Blocking is not used yet: every output is Script mode.
+    path = input_file or "<stdin>"
+    blocking = None
     if fse.has_fse_notes(screenplay):
-        process_fse(screenplay, input_file or "<stdin>", args.no_warnings)
+        blocking = process_fse(screenplay, path, args.no_warnings, as_stageplay)
+    if args.blocking:
+        check_blocking(screenplay, blocking, path, as_stageplay)
+    else:
+        # Every FSE script is checked, but plans are drawn only when asked.
+        blocking = None
 
     stageplay = to_stageplay(screenplay) if as_stageplay else None
 
@@ -176,7 +191,7 @@ def main(argv: list[str]) -> None:
 
     try:
         if stageplay:
-            convert_stageplay(stageplay, out_format, output, args)
+            convert_stageplay(stageplay, out_format, output, args, blocking)
         elif out_format == "fdx":
             from screenplain.export.fdx import to_fdx
 
@@ -194,19 +209,23 @@ def main(argv: list[str]) -> None:
             settings = pdf.Settings(
                 font_settings=font_settings, strong_slugs=args.strong
             )
-            pdf.to_pdf(screenplay, output, settings=settings)  # ty: ignore[invalid-argument-type]
+            pdf.to_pdf(screenplay, output, settings=settings, blocking=blocking)  # ty: ignore[invalid-argument-type]
     finally:
         if output_file:
             output.close()
 
 
-def process_fse(screenplay: Screenplay, path: str, no_warnings: bool) -> None:
+def process_fse(
+    screenplay: Screenplay, path: str, no_warnings: bool, stageplay: bool
+) -> fse.Blocking:
     """Processes a script's FSE notes, printing reports to stderr.
 
     Raises SystemExit(1) on an error.
     """
+    blocking = None
     try:
-        warnings = fse.process(screenplay).reports
+        blocking = fse.process(screenplay, stageplay=stageplay)
+        warnings = blocking.reports
         error = None
     except fse.FseError as exception:
         warnings, error = exception.warnings, exception.report
@@ -217,10 +236,42 @@ def process_fse(screenplay: Screenplay, path: str, no_warnings: bool) -> None:
         print(error.format(path), file=sys.stderr)
         print("screenplain: no output written (1 error)", file=sys.stderr)
         raise SystemExit(1)
+    assert blocking is not None
+    return blocking
+
+
+def check_blocking(
+    screenplay: Screenplay,
+    blocking: fse.Blocking | None,
+    path: str,
+    as_stageplay: bool,
+) -> None:
+    """Checks that `--blocking` can draw plans for a script.
+
+    Raises SystemExit(1) when it cannot.
+    """
+    if blocking is None or blocking.stage is None:
+        fail(f"--blocking needs an FSE script, but {path} has no (valid) FSE notes")
+    if as_stageplay:
+        line = fse.front_matter_note(screenplay)
+        if line is not None:
+            fail(
+                f"--blocking needs FSE notes after the front matter, but {path}:"
+                f"{line} has one before the first page break"
+            )
+
+
+def fail(message: str) -> NoReturn:
+    print(f"screenplain: {message}", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def convert_stageplay(
-    play: StagePlay, out_format: str, output: object, args: argparse.Namespace
+    play: StagePlay,
+    out_format: str,
+    output: object,
+    args: argparse.Namespace,
+    blocking: fse.Blocking | None,
 ) -> None:
     if out_format == "html":
         from screenplain.export.html import convert_stageplay
@@ -233,7 +284,7 @@ def convert_stageplay(
         if args.standard_font:
             font_settings = stageplay_pdf.get_standard_font_settings()
         settings = stageplay_pdf.StagePlaySettings(font_settings=font_settings)
-        stageplay_pdf.to_pdf(play, output, settings=settings)  # ty: ignore[invalid-argument-type]
+        stageplay_pdf.to_pdf(play, output, settings=settings, blocking=blocking)  # ty: ignore[invalid-argument-type]
 
 
 def cli() -> None:

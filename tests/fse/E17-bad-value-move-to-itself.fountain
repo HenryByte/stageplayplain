@@ -1,0 +1,8 @@
+/* expect: 8: error: E17 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=sam]]

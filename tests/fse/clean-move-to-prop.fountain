@@ -1,0 +1,26 @@
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY door type=entrance pos=5,0]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+[[FSE ENTITY alex type=cast pos=-3,2]]
+[[FSE ENTITY chair type=prop pos=-3,0]]
+[[FSE ENTITY table type=prop pos=3,0]]
+[[FSE ENTITY skull type=prop with=alex]]
+[[FSE ENTITY lamp type=prop]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=chair facing=chair]]
+
+She goes to the chair.
+
+[[FSE MOVE chair pos=table by=crew]]
+
+It's taken to the table.
+
+[[FSE MOVE sam pos=skull]]
+
+She goes after the skull Alex holds.
+
+[[FSE ENTER lamp from=door pos=table]]
+
+A lamp is brought to the table.

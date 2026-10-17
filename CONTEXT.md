@@ -71,7 +71,7 @@ One keyword-led instruction inside an FSE note; a note may hold several, separat
 Any tool that reads FSE directives; a conforming processor parses them and reports the spec's errors and warnings.
 
 **Scene boundary**:
-A slugline, a forced (`.`) scene heading, or a section heading of any depth (`#`, `##`, …). Applies in screenplay and stage-play mode alike.
+A slugline, a forced (`.`) scene heading, or a section heading of any depth (`#`, `##`, …). Applies in screenplay and stage-play mode alike, except that headings in a stage play's front matter are not scene boundaries.
 _Avoid_: scene break (ambiguous with page break `===`)
 
 **PRESET**:
@@ -115,12 +115,23 @@ Consecutive steps whose notes have nothing of the script between them (no dialog
 _Avoid_: cluster, merged steps
 
 **Picture change**:
-A step that changes the stage picture: some cast member's or prop's whereabouts, followed through `on` and `with` to the floor, or whether it is onstage. Starting an open move, each `VIA` and `ARRIVE` are picture changes; a facing change or a change of carrier alone is not.
+A step that changes the stage picture: some cast member's or prop's whereabouts, followed through `on` and `with` to the floor, whether it is onstage, or an onstage cast member's facing as written. Starting an open move, each `VIA` and `ARRIVE` are picture changes, and so is a turn in place; a change of carrier alone is not, and nor is someone's facing following a person they face as that person moves.
 _Avoid_: movement step
 
 **Margin plan**:
-The plan beside the script for one step group that holds at least one picture change, tied to its cue by a marker. Steps at the top of a scene never get one: the scene plan shows them. It is a drawing only, with no key. Margin plans stack in script order down the margin; the script text never moves to make room.
+The plan beside the script for one step group that holds at least one picture change, tied to its cue by a plan marker. Steps at the top of a scene never get one: the scene plan shows them. It is a drawing only, with no key. It shows the whole stage after the group, with the group's movers in ink and everything else in grey, and a path from where each mover was. Someone who turns in place gets an arc round their circle instead, from the old facing to the new; a turn never sweeps past facing upstage, so it can go the long way round. Margin plans stack in script order down the margin, each starting level with its cue or below the plan above, never above its cue; one that would run off the page carries to the top of the next page's margin. The script text never moves to make room.
+
+**Plan marker**:
+The number tying a margin plan to its cue: shown in the margin level with the cue's line and again on the plan. Numbers restart in each scene; the scene plan has none. Cues sharing a line share one label, numbers in script order. A plan carried to the next page is marked as such at both ends.
+_Avoid_: marker (unqualified: the `FSE` marker begins an FSE note), plan number
+
+**Margin note**:
+A `NOTE` printed in the margin at its cue, stacked with the margin plans: a box the width of a plan with `*` and the cast member's initials, then the note in italic. It shares the plan markers' gutter, where it shows as `*`.
+
+**Huddle**:
+One rounded label on a plan standing in for entities drawn on top of each other: a cast member or prop with everything whose drawn centre is within one cast-circle radius of it, plus every prop `on` or `with` any of them. It lists cast initials, then prop numbers, each in ink or grey as it would be drawn alone, and shows no facing. A huddle never grows by chaining from one neighbour to the next; symbols that overlap without huddling are drawn where they are, the inked one on top.
+_Avoid_: cluster, pill, group
 
 **Front matter**:
-In a stage play, everything before the first page break (cast list, setting, notes): not part of the performance. Under blocking output it may hold no FSE note, declarations included, since it has no scenes to draw plans in.
+In a stage play, everything before the first page break (cast list, setting, notes): not part of the performance. Its headings are not scene boundaries, so the declaration block may follow it. Under blocking output it may hold no FSE note, declarations included, since it has no scenes to draw plans in.
 _Avoid_: preamble, prelims

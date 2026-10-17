@@ -2,6 +2,7 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
 
+import copy
 import os
 import re
 import sys
@@ -26,6 +27,17 @@ from reportlab.platypus import (
 )
 
 from screenplain import types
+from screenplain.export import plans
+from screenplain.export.margin_plans import (
+    Cues,
+    CueSpacer,
+    FlushMargin,
+    MarginItem,
+    MarginLayout,
+    html_with_cues,
+    margin_items,
+)
+from screenplain.fse import Blocking
 from screenplain.richstring import RichString
 from screenplain.types import (
     Action,
@@ -350,18 +362,45 @@ class DocTemplate(BaseDocTemplate):
         self._handle_pageBegin()
 
 
+def lines_html(
+    lines: list[RichString], cues: Cues | None = None, index: int = -1
+) -> str:
+    """Lines joined with breaks, with any margin-plan cues spliced in."""
+    if cues is None:
+        return "<br/>".join(line.to_html() for line in lines)
+    html = "<br/>".join(
+        html_with_cues(line, cues.part(index, 0, part))
+        for part, line in enumerate(lines)
+    )
+    return cues.before(index) + html + cues.after(index)
+
+
 def add_paragraph(
-    story: list[Flowable], para: Action | Transition, style: ParagraphStyle
+    story: list[Flowable],
+    para: Action | Transition,
+    style: ParagraphStyle,
+    cues: Cues | None = None,
+    index: int = -1,
 ) -> None:
-    story.append(Paragraph("<br/>".join(line.to_html() for line in para.lines), style))
+    story.append(Paragraph(lines_html(para.lines, cues, index), style))
 
 
-def add_slug(story: list[Flowable], para: Slug, settings: Settings) -> None:
-    for line in para.lines:
+def add_slug(
+    story: list[Flowable],
+    para: Slug,
+    settings: Settings,
+    cues: Cues | None = None,
+    index: int = -1,
+) -> None:
+    for number, line in enumerate(para.lines):
         if settings.strong_slugs:
             html = "<b><u>" + line.to_html() + "</u></b>"
         else:
             html = line.to_html()
+        if cues is not None and number == 0:
+            html = cues.before(index) + html
+        if cues is not None and number == len(para.lines) - 1:
+            html += cues.after(index)
 
         paragraph = Paragraph(html, settings.slug_style)
 
@@ -373,8 +412,44 @@ def add_slug(story: list[Flowable], para: Slug, settings: Settings) -> None:
             story.append(paragraph)
 
 
+class SpeechCues:
+    """The margin-plan cues of one speech: at its start, in its blocks and
+    at its end.
+    """
+
+    def __init__(
+        self,
+        cues: Cues | None = None,
+        index: int = -1,
+        side: int = 0,
+        first: bool = True,
+        last: bool = True,
+    ) -> None:
+        self.cues, self.index, self.side = cues, index, side
+        self.first, self.last = first, last
+
+    @property
+    def start(self) -> str:
+        return self.cues.before(self.index) if self.cues and self.first else ""
+
+    @property
+    def end(self) -> str:
+        return self.cues.after(self.index) if self.cues and self.last else ""
+
+    def end_ids(self, last_block: bool) -> list[str]:
+        if not (self.cues and self.last and last_block):
+            return []
+        return list(self.cues.end.get(self.index, []))
+
+    def parts(self, part: int) -> list[tuple[int, str]]:
+        return self.cues.part(self.index, self.side, part) if self.cues else []
+
+
 def _dialog_to_flowables(
-    dialog: Dialog, settings: Settings, column_width: float | None = None
+    dialog: Dialog,
+    settings: Settings,
+    column_width: float | None = None,
+    cues: SpeechCues | None = None,
 ) -> list[Flowable]:
     # If column_width is set, adjust indents proportionally
     if column_width is not None:
@@ -401,34 +476,63 @@ def _dialog_to_flowables(
         character_style = settings.character_style
         dialog_style = settings.dialog_style
         parenthentical_style = settings.parenthentical_style
-    flowables: list[Flowable] = [Paragraph(dialog.character.to_html(), character_style)]
-    for is_parenthetical, line in dialog.blocks:
+    cues = cues or SpeechCues()
+    flowables: list[Flowable] = [
+        Paragraph(cues.start + dialog.character.to_html(), character_style)
+    ]
+    last = len(dialog.blocks) - 1
+    for part, (is_parenthetical, line) in enumerate(dialog.blocks):
         if is_parenthetical:
             style = parenthentical_style
         else:
             style = dialog_style
-        line_html = line.to_html()
-        if not line_html:
+        at = cues.parts(part)
+        end = cues.end if part == last else ""
+        if not line.to_html():
             # Force an empty line to use vertical space
-            flowables.append(Spacer(1, settings.line_height))
+            plan_ids = [plan_id for _, plan_id in at] + cues.end_ids(part == last)
+            if plan_ids:
+                flowables.append(CueSpacer(1, settings.line_height, plan_ids))
+            else:
+                flowables.append(Spacer(1, settings.line_height))
         else:
-            flowables.append(Paragraph(line_html, style))
+            flowables.append(Paragraph(html_with_cues(line, at) + end, style))
     return flowables
 
 
-def add_dialog(story: list[Flowable], dialog: Dialog, settings: Settings) -> None:
-    flowables = _dialog_to_flowables(dialog, settings)
+def add_dialog(
+    story: list[Flowable],
+    dialog: Dialog,
+    settings: Settings,
+    cues: Cues | None = None,
+    index: int = -1,
+) -> None:
+    flowables = _dialog_to_flowables(dialog, settings, cues=SpeechCues(cues, index))
     for flowable in flowables:
         story.append(flowable)
 
 
 def add_dual_dialog(
-    story: list[Flowable], dual: DualDialog, settings: Settings
+    story: list[Flowable],
+    dual: DualDialog,
+    settings: Settings,
+    cues: Cues | None = None,
+    index: int = -1,
 ) -> None:
     # Format dual dialog side-by-side using a Table
     col_width = settings.frame_width / 2
-    left_flowables = _dialog_to_flowables(dual.left, settings, column_width=col_width)
-    right_flowables = _dialog_to_flowables(dual.right, settings, column_width=col_width)
+    left_flowables = _dialog_to_flowables(
+        dual.left,
+        settings,
+        column_width=col_width,
+        cues=SpeechCues(cues, index, 0, last=False),
+    )
+    right_flowables = _dialog_to_flowables(
+        dual.right,
+        settings,
+        column_width=col_width,
+        cues=SpeechCues(cues, index, 1, first=False),
+    )
     table_data = [[left_flowables, right_flowables]]
     # Create a table with one row and two columns.
     # Set splitInRow=1 to allow splitting the table across pages.
@@ -560,21 +664,47 @@ def pdf_metadata(screenplay: Screenplay) -> dict[str, str | list[str] | None]:
     }
 
 
+# How far `--blocking` shifts the text column left.
+BLOCKING_SHIFT = 0.5 * inch
+
+
+def with_blocking_margins(settings: Settings) -> Settings:
+    """The settings with the text column shifted left to make room for
+    margin plans. Column width, and so line breaks, are unchanged.
+    """
+    shifted = copy.copy(settings)
+    shifted.left_margin = settings.left_margin - BLOCKING_SHIFT
+    shifted.right_margin = settings.right_margin + BLOCKING_SHIFT
+    return shifted
+
+
 def to_pdf(
     screenplay: Screenplay,
     output_filename: TextIOWrapper,
     template_constructor: type[DocTemplate] = DocTemplate,
     settings: Settings | None = None,
+    blocking: Blocking | None = None,
 ) -> None:
+    """Writes a screenplay as PDF. With a `blocking`, each scene opens with
+    its scene plan.
+    """
     settings = settings or create_default_settings()
+    scene_plans = {}
+    margin: list[MarginItem] = []
+    cues = None
+    if blocking is not None:
+        settings = with_blocking_margins(settings)
+        scene_plans = plans.scene_plans(blocking)
+        margin = margin_items(blocking)
+        cues = Cues.place(blocking, margin)
     story = get_title_page_story(screenplay, settings)
     has_title_page = bool(story)
 
-    for para in screenplay:
+    for index, para in enumerate(screenplay.paragraphs):
         if isinstance(para, Dialog):
-            add_dialog(story, para, settings)
+            add_dialog(story, para, settings, cues, index)
         elif isinstance(para, DualDialog):
-            add_dual_dialog(story, para, settings)
+            add_dual_dialog(story, para, settings, cues, index)
         elif isinstance(para, Action):
             add_paragraph(
                 story,
@@ -582,16 +712,26 @@ def to_pdf(
                 settings.centered_action_style
                 if para.centered
                 else settings.action_style,
+                cues,
+                index,
             )
         elif isinstance(para, Slug):
-            add_slug(story, para, settings)
+            add_slug(story, para, settings, cues, index)
         elif isinstance(para, Transition):
-            add_paragraph(story, para, settings.transition_style)
+            add_paragraph(story, para, settings.transition_style, cues, index)
         elif isinstance(para, types.PageBreak):
             story.append(platypus.PageBreak())
+        elif isinstance(para, types.Section) and cues is not None:
+            # Not shown in a screenplay, but it can still hold cues.
+            plan_ids = cues.start.get(index, []) + cues.end.get(index, [])
+            if plan_ids:
+                story.append(CueSpacer(0, 0, plan_ids))
         else:
             # Ignore unknown types
             pass
+        if index in scene_plans:
+            assert blocking is not None
+            story.append(plans.ScenePlan(blocking, scene_plans[index]))
 
     meta = pdf_metadata(screenplay)
     doc = template_constructor(
@@ -601,4 +741,14 @@ def to_pdf(
         has_title_page=has_title_page,
         **meta,
     )
+    if blocking is not None:
+        layout = MarginLayout(
+            blocking,
+            margin,
+            settings.left_margin + settings.frame_width,
+            settings.page_height - settings.top_margin,
+            settings.bottom_margin,
+        )
+        layout.install(doc)
+        story.append(FlushMargin(layout))
     doc.build(story)

@@ -1,0 +1,10 @@
+/* expect: 10: error: E17 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY alex type=cast pos=0,0]]
+[[FSE ENTITY bag type=prop with=alex]]
+[[FSE ENTITY wallet type=prop on=bag]]
+
+INT. FLAT
+
+[[FSE SET bag pos=wallet]]

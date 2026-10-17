@@ -37,6 +37,9 @@ from screenplain.fse.directives import (
     parse_location,
     validate,
 )
+from screenplain.fse.directives import (
+    Note as NoteDirective,
+)
 from screenplain.fse.model import (
     OFFSTAGE,
     UNPLACED,
@@ -46,6 +49,7 @@ from screenplain.fse.model import (
     Cue,
     EntityState,
     Entrance,
+    Facing,
     Location,
     Mark,
     Moving,
@@ -84,6 +88,9 @@ from screenplain.types import (
 
 # W04: how far a cast member can reach, in metres.
 REACH = 1.5
+# How far short of a cast member or prop a MOVE or ENTER to it stops, in
+# metres.
+BESIDE = 1.0
 
 
 @dataclass
@@ -125,18 +132,31 @@ def _carrier_of(whereabouts: Whereabouts) -> str | None:
     return None
 
 
-def process(screenplay: Screenplay) -> Blocking:
+def process(screenplay: Screenplay, *, stageplay: bool = False) -> Blocking:
     """Processes a script's FSE notes.
+
+    In a stage play, headings in the front matter (before the first page
+    break) are not scene boundaries.
 
     Returns the `Blocking`, or raises `FseError` on the first error.
     """
-    return _Processor(screenplay).run()
+    return _Processor(screenplay, stageplay).run()
 
 
 class _Processor:
-    def __init__(self, screenplay: Screenplay) -> None:
+    def __init__(self, screenplay: Screenplay, stageplay: bool = False) -> None:
         self.screenplay = screenplay
         self.paragraphs = screenplay.paragraphs
+        self.body_start = 0
+        if stageplay:
+            self.body_start = next(
+                (
+                    index + 1
+                    for index, para in enumerate(self.paragraphs)
+                    if isinstance(para, PageBreak)
+                ),
+                0,
+            )
         self.positions = ScriptPositions(screenplay)
         self.sites = collect_sites(screenplay)
         self.outcomes = [_tokenise(site) for site in self.sites]
@@ -149,8 +169,8 @@ class _Processor:
         self.first_boundary = next(
             (
                 index
-                for index, para in enumerate(self.paragraphs)
-                if isinstance(para, (Slug, Section))
+                for index in range(len(self.paragraphs))
+                if self._is_boundary(index)
             ),
             len(self.paragraphs),
         )
@@ -173,6 +193,11 @@ class _Processor:
         self.moves: dict[tuple[str, Cue], Move] = {}
         self.ever_onstage: set[str] = set()
         self.unmatched_cues: set[str] = set()
+
+    def _is_boundary(self, index: int) -> bool:
+        return index >= self.body_start and isinstance(
+            self.paragraphs[index], (Slug, Section)
+        )
 
     # Reporting
 
@@ -386,7 +411,8 @@ class _Processor:
         for index in by_paragraph.pop(-1, []):
             self._note(index)
         for paragraph, para in enumerate(self.paragraphs):
-            if isinstance(para, (Slug, Section)):
+            if self._is_boundary(paragraph):
+                assert isinstance(para, (Slug, Section))
                 self._boundary(para)
             elif not isinstance(para, (Note, PageBreak)):
                 self.content = True
@@ -569,16 +595,42 @@ class _Processor:
         return entity
 
     def _check_location(
-        self, directive: AnyDirective, location: Location | None
+        self, directive: AnyDirective, location: Location | None, key: str = "pos"
     ) -> None:
         if isinstance(location, Place):
-            self._ref(directive, location.id, (Mark, Entrance), "pos")
+            self._ref(directive, location.id, (Mark, Entrance), key)
+
+    def _check_beside(
+        self, directive: Enter | Move | Set, pre: dict[str, EntityState]
+    ) -> None:
+        """Checks a `pos` that may name a cast member or prop: one to go up
+        to, or for `SET`, one to put a prop down where it is.
+        """
+        pos = directive.pos
+        if not isinstance(pos, Place):
+            return
+        target = self._ref(directive, pos.id, (Mark, Entrance, Cast, Prop), "pos")
+        if not isinstance(target, (Cast, Prop)):
+            return
+        if target.id == directive.subject:
+            self._fail("E17", directive, f"pos={target.id}: {target.id} is the subject")
+        if target.id in carried(pre, directive.subject):
+            self._fail(
+                "E17",
+                directive,
+                f"pos={target.id}: {target.id} is carried by {directive.subject}",
+            )
+        if not is_onstage(pre, target.id):
+            self._fail("E05", directive, f"pos={target.id}: {target.id} is offstage")
 
     def _check_facing(
         self, directive: AnyDirective, facing: Bearing | Toward | None
     ) -> None:
         if isinstance(facing, Toward) and isinstance(facing.location, Place):
-            self._ref(directive, facing.location.id, (Mark, Entrance), "facing")
+            target = facing.location.id
+            self._ref(directive, target, (Mark, Entrance, Cast, Prop), "facing")
+            if target == getattr(directive, "subject", None):
+                self._fail("E17", directive, f"facing={target}: {target} faces itself")
 
     def _check_by(self, directive: AnyDirective, by: str | None) -> None:
         if by is not None and by != "crew":
@@ -640,7 +692,7 @@ class _Processor:
                         )
                 if directive.from_ is not None:
                     self._ref(directive, directive.from_, (Entrance,), "from")
-                self._check_location(directive, directive.pos)
+                self._check_beside(directive, pre)
                 self._check_facing(directive, directive.facing)
                 if is_onstage(pre, entity.id):
                     self._fail("E06", directive, f"{entity.id} is already onstage")
@@ -659,7 +711,9 @@ class _Processor:
                 self._not_on(
                     directive, entity, "by" if isinstance(entity, Cast) else "facing"
                 )
-                self._check_location(directive, directive.pos)
+                self._check_beside(directive, pre)
+                for location in directive.via:
+                    self._check_location(directive, location, "via")
                 self._check_facing(directive, directive.facing)
                 self._check_by(directive, directive.by)
                 whereabouts = pre[entity.id].whereabouts
@@ -706,7 +760,7 @@ class _Processor:
                         self._fail(
                             "E08", directive, "SET on a prop needs pos, on or with"
                         )
-                self._check_location(directive, directive.pos)
+                self._check_beside(directive, pre)
                 self._check_facing(directive, directive.facing)
                 if directive.on is not None:
                     self._ref(directive, directive.on, (Prop,), "on")
@@ -715,6 +769,8 @@ class _Processor:
                 if directive.with_ is not None:
                     self._ref(directive, directive.with_, (Cast,), "with")
                 self._check_by(directive, directive.by)
+            case NoteDirective():
+                self._subject(directive, (Cast,))
             case Strike():
                 if directive.subject == "all":
                     if directive.by is not None:
@@ -749,6 +805,8 @@ class _Processor:
         """The entities a directive affects (§6.3): its subject and, when it
         moves its subject or takes it off, every prop carried by it.
         """
+        if isinstance(directive, NoteDirective):
+            return set()
         if isinstance(directive, Exit) and directive.subject == "all":
             ids = {
                 entity_id
@@ -869,7 +927,7 @@ class _Processor:
                 for index in range(
                     self.sites[self.current].cue.paragraph + 1, len(self.paragraphs)
                 )
-                if isinstance(self.paragraphs[index], (Slug, Section))
+                if self._is_boundary(index)
             ),
             None,
         )
@@ -918,7 +976,10 @@ class _Processor:
         if isinstance(directive, Set):
             if directive.pos is not None:
                 targets.append(
-                    (str(_location_text(directive.pos)), self._resolve(directive.pos))
+                    (
+                        str(_location_text(directive.pos)),
+                        self._spot(pre, directive.pos, directive.cue),
+                    )
                 )
             for target in (directive.on, directive.with_):
                 if target is not None:
@@ -968,16 +1029,32 @@ class _Processor:
             case Enter():
                 assert directive.from_ is not None or directive.pos is not None
                 location = directive.pos or Place(directive.from_ or "")
-                self._place(directive.subject, At(location), directive.facing, pre, new)
+                facing = self._facing_up_to(directive)
+                if self._is_beside(location):
+                    start = (
+                        self._resolve(Place(directive.from_))
+                        if directive.from_
+                        else None
+                    )
+                    location = self._beside(pre, location, start, cue)
+                self._place(directive.subject, At(location), facing, pre, new)
             case Move():
                 location: Location = directive.pos
+                facing = self._facing_up_to(directive)
+                if self._is_beside(location):
+                    start = (
+                        self._resolve(directive.via[-1])
+                        if directive.via
+                        else self._point(pre, directive.subject, cue)
+                    )
+                    location = self._beside(pre, location, start, cue)
                 whereabouts: Whereabouts = At(location)
                 if directive.until_arrive:
                     current = pre[directive.subject].whereabouts
                     assert isinstance(current, At)
                     whereabouts = Moving(OpenMove(current.location, location, cue))
                     self.moves[directive.subject, cue] = directive
-                self._place(directive.subject, whereabouts, directive.facing, pre, new)
+                self._place(directive.subject, whereabouts, facing, pre, new)
             case Via():
                 current = pre[directive.subject].whereabouts
                 assert isinstance(current, Moving)
@@ -991,6 +1068,10 @@ class _Processor:
                 self._place(directive.subject, destination, directive.facing, pre, new)
             case Set():
                 whereabouts = _target(directive.pos, directive.on, directive.with_)
+                if directive.pos is not None and self._is_beside(directive.pos):
+                    spot = self._spot(pre, directive.pos, cue)
+                    assert spot is not None
+                    whereabouts = At(spot)
                 if whereabouts is None:
                     whereabouts = pre[directive.subject].whereabouts
                 self._place(directive.subject, whereabouts, directive.facing, pre, new)
@@ -1004,8 +1085,67 @@ class _Processor:
                     new[subject] = EntityState(OFFSTAGE, directive.facing)
                 else:
                     self._place(subject, whereabouts, directive.facing, pre, new)
+            case NoteDirective():
+                pass
             case _:
                 raise AssertionError(directive)
+
+    def _is_beside(self, location: Location) -> bool:
+        """Whether a location names a cast member or prop to go up to."""
+        return isinstance(location, Place) and isinstance(
+            self.entities.get(location.id), (Cast, Prop)
+        )
+
+    def _spot(
+        self, pre: dict[str, EntityState], location: Location, cue: Cue
+    ) -> Point | None:
+        """Where a location is at a cue: for a cast member or prop, where
+        it stands.
+        """
+        if self._is_beside(location):
+            assert isinstance(location, Place)
+            return self._point(pre, location.id, cue)
+        return self._resolve(location)
+
+    def _facing_up_to(self, directive: Enter | Move) -> Facing:
+        """A directive's facing: the one given, or else, for a cast member
+        going up to someone or something, toward it.
+        """
+        pos = directive.pos
+        if (
+            directive.facing is None
+            and pos is not None
+            and self._is_beside(pos)
+            and isinstance(self.entities.get(directive.subject), Cast)
+        ):
+            return Toward(pos)
+        return directive.facing
+
+    def _beside(
+        self,
+        pre: dict[str, EntityState],
+        location: Location,
+        start: Point | None,
+        cue: Cue,
+    ) -> Point:
+        """Where someone coming from `start` stops to stand beside the cast
+        member or prop `location` names, where it is at the cue: `BESIDE`
+        short of it, or where they are if already that close. Coming from
+        nowhere, or from the very spot, they stand to its +x side.
+        """
+        assert isinstance(location, Place)
+        target = self._point(pre, location.id, cue)
+        assert target is not None
+        gap = BESIDE / (self.stage.metres_per_unit if self.stage else 1.0)
+        if start is None or start.distance(target) < 1e-9:
+            return Point(target.x + gap, target.y)
+        distance = start.distance(target)
+        if distance <= gap:
+            return start
+        return Point(
+            target.x + (start.x - target.x) * gap / distance,
+            target.y + (start.y - target.y) * gap / distance,
+        )
 
     def _place(
         self,

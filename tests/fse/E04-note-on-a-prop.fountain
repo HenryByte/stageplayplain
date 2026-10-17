@@ -1,0 +1,8 @@
+/* expect: 8: error: E04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY bag type=prop pos=0,0]]
+
+INT. FLAT
+
+[[FSE NOTE bag text="Looks heavy"]]

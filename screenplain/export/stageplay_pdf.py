@@ -23,12 +23,23 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import PageBreakIfNotEmpty
 
+from screenplain.export import plans
+from screenplain.export.margin_plans import (
+    Cues,
+    FlushMargin,
+    MarginItem,
+    MarginLayout,
+    cue_tag,
+    html_with_cues,
+    margin_items,
+)
 from screenplain.export.pdf import (
     FontSettings,
     Settings,
     get_title_page_story,
     pdf_metadata,
 )
+from screenplain.fse import Blocking
 from screenplain.richstring import RichString
 from screenplain.stageplay import split_cue
 from screenplain.types import (
@@ -239,46 +250,125 @@ def _lines_html(lines: list[RichString]) -> str:
     return "<br/>".join(line.to_html() for line in lines)
 
 
-def _direction_html(direction: StageDirection, settings: StagePlaySettings) -> str:
-    return "<br/>".join(
-        "".join(
-            small_caps(str(part.name), settings)
-            if isinstance(part, CharacterName)
-            else part.to_inline_html()
-            for part in line
-        )
-        for line in direction.lines
+class SourceCues:
+    """The margin-plan cues of the screenplay paragraph a stage-play body
+    element came from.
+    """
+
+    def __init__(self, cues: Cues | None = None, index: int | None = None) -> None:
+        self.cues, self.index = cues, index
+
+    @property
+    def start(self) -> str:
+        if self.cues is None or self.index is None:
+            return ""
+        return self.cues.before(self.index)
+
+    @property
+    def end(self) -> str:
+        if self.cues is None or self.index is None:
+            return ""
+        return self.cues.after(self.index)
+
+    def part(self, side: int, part: int) -> list[tuple[int, str]]:
+        if self.cues is None or self.index is None:
+            return []
+        return self.cues.part(self.index, side, part)
+
+
+def _direction_line_html(
+    line: list[RichString | CharacterName],
+    settings: StagePlaySettings,
+    cues: list[tuple[int, str]],
+) -> str:
+    """A stage direction line's HTML, with cues at offsets into the line
+    as written. Each name was written with an `@` that is no longer in
+    it; a cue inside a name goes before it.
+    """
+    html: list[str] = []
+    start = 0
+    pending = sorted(cues)
+    for part in line:
+        if isinstance(part, CharacterName):
+            end = start + 1 + len(str(part.name))
+            while pending and pending[0][0] < end:
+                html.append(cue_tag(pending.pop(0)[1]))
+            html.append(small_caps(str(part.name), settings))
+        else:
+            end = start + len(str(part))
+            here = [
+                (offset - start, plan_id) for offset, plan_id in pending if offset < end
+            ]
+            pending = pending[len(here) :]
+            html.append(html_with_cues(part, here, inline=True))
+        start = end
+    html += [cue_tag(plan_id) for _, plan_id in pending]
+    return "".join(html)
+
+
+def _direction_html(
+    direction: StageDirection,
+    settings: StagePlaySettings,
+    cues: SourceCues | None = None,
+) -> str:
+    cues = cues or SourceCues()
+    html = "<br/>".join(
+        _direction_line_html(line, settings, cues.part(0, part))
+        for part, line in enumerate(direction.lines)
     )
+    return cues.start + html + cues.end
 
 
-def _speech_html(dialog: Dialog, settings: StagePlaySettings) -> str:
+def _speech_html(
+    dialog: Dialog,
+    settings: StagePlaySettings,
+    cues: SourceCues | None = None,
+    side: int = 0,
+    first: bool = True,
+    last: bool = True,
+) -> str:
+    cues = cues or SourceCues()
     name, extension = split_cue(dialog.character)
-    html = small_caps(name, settings)
+    html = (cues.start if first else "") + small_caps(name, settings)
     if extension:
         html += f" <i>{escape(extension)}</i>"
     if not name.endswith(".") or extension:
         html += "."
 
     previous_parenthetical = True  # The cue runs in to the first line.
-    for parenthetical, text in dialog.blocks:
+    for part, (parenthetical, text) in enumerate(dialog.blocks):
+        text_html = html_with_cues(text, cues.part(side, part))
         if parenthetical:
-            html += f" <i>{text.to_html()}</i>"
+            html += f" <i>{text_html}</i>"
         elif previous_parenthetical:
-            html += " " + text.to_html()
+            html += " " + text_html
         else:
-            html += "<br/>" + text.to_html()
+            html += "<br/>" + text_html
         previous_parenthetical = parenthetical
-    return html
+    return html + (cues.end if last else "")
 
 
-def _speech(dialog: Dialog, settings: StagePlaySettings) -> Paragraph:
-    return Paragraph(_speech_html(dialog, settings), settings.speech_style)
+def _speech(
+    dialog: Dialog,
+    settings: StagePlaySettings,
+    cues: SourceCues | None = None,
+    side: int = 0,
+    first: bool = True,
+    last: bool = True,
+) -> Paragraph:
+    return Paragraph(
+        _speech_html(dialog, settings, cues, side, first, last), settings.speech_style
+    )
 
 
-def _dual_speech(dual: DualDialog, settings: StagePlaySettings) -> Flowable:
+def _dual_speech(
+    dual: DualDialog, settings: StagePlaySettings, cues: SourceCues | None = None
+) -> Flowable:
     col_width = settings.frame_width / 2
+    left = _speech(dual.left, settings, cues, 0, last=False)
+    right = _speech(dual.right, settings, cues, 1, first=False)
     return platypus.Table(
-        [[[_speech(dual.left, settings)], [_speech(dual.right, settings)]]],
+        [[[left], [right]]],
         splitInRow=1,
         spaceBefore=settings.line_height / 2,
         colWidths=[col_width, col_width],
@@ -343,34 +433,60 @@ def _front_section_story(
     return story
 
 
-def _body_story(play: StagePlay, settings: StagePlaySettings) -> list[Flowable]:
+def _body_story(
+    play: StagePlay,
+    settings: StagePlaySettings,
+    blocking: Blocking | None = None,
+    cues: Cues | None = None,
+) -> list[Flowable]:
     story: list[Flowable] = [PageBreakIfNotEmpty(), BodyStart()]
-    for para in play.body:
+    scene_plans = plans.scene_plans(blocking) if blocking is not None else {}
+    for index, para in enumerate(play.body):
+        source = play.sources[index] if index < len(play.sources) else None
+        at = SourceCues(cues, source)
         if isinstance(para, Act):
             # BodyStart counts as page content, so don't break straight after it.
             if not isinstance(story[-1], BodyStart):
                 story.append(PageBreakIfNotEmpty())
-            story.append(Paragraph(escape(str(para.text).upper()), settings.act_style))
+            story.append(
+                Paragraph(
+                    at.start + escape(str(para.text).upper()) + at.end,
+                    settings.act_style,
+                )
+            )
         elif isinstance(para, Scene):
             story.append(
-                Paragraph(small_caps(str(para.text), settings), settings.scene_style)
+                Paragraph(
+                    at.start + small_caps(str(para.text), settings) + at.end,
+                    settings.scene_style,
+                )
             )
         elif isinstance(para, StageDirection):
             story.append(
-                Paragraph(_direction_html(para, settings), settings.direction_style)
+                Paragraph(_direction_html(para, settings, at), settings.direction_style)
             )
         elif isinstance(para, Dialog):
-            story.append(_speech(para, settings))
+            story.append(_speech(para, settings, at))
         elif isinstance(para, DualDialog):
-            story.append(_dual_speech(para, settings))
+            story.append(_dual_speech(para, settings, at))
         elif isinstance(para, Action):
             story.append(
-                Paragraph(_lines_html(para.lines), settings.centered_action_style)
+                Paragraph(
+                    at.start + _lines_html(para.lines) + at.end,
+                    settings.centered_action_style,
+                )
             )
         elif isinstance(para, Transition):
-            story.append(Paragraph(para.line.to_html(), settings.transition_style))
+            story.append(
+                Paragraph(
+                    at.start + para.line.to_html() + at.end, settings.transition_style
+                )
+            )
         elif isinstance(para, PageBreak):
             story.append(platypus.PageBreak())
+        if source in scene_plans:
+            assert blocking is not None
+            story.append(plans.ScenePlan(blocking, scene_plans[source]))
     return story
 
 
@@ -378,7 +494,11 @@ def to_pdf(
     play: StagePlay,
     output_filename: TextIOWrapper,
     settings: StagePlaySettings | None = None,
+    blocking: Blocking | None = None,
 ) -> None:
+    """Writes a stage play as PDF. With a `blocking`, each scene opens with
+    its scene plan.
+    """
     settings = settings or StagePlaySettings()
     story = get_title_page_story(play, settings)
     for section in play.front_matter:
@@ -386,7 +506,12 @@ def to_pdf(
             story += _cast_list_story(section, settings)
         else:
             story += _front_section_story(section, settings)
-    story += _body_story(play, settings)
+    margin: list[MarginItem] = []
+    cues = None
+    if blocking is not None:
+        margin = margin_items(blocking)
+        cues = Cues.place(blocking, margin)
+    story += _body_story(play, settings, blocking, cues)
 
     doc = StagePlayDocTemplate(
         output_filename,
@@ -394,4 +519,14 @@ def to_pdf(
         settings=settings,
         **pdf_metadata(play),
     )
+    if blocking is not None:
+        layout = MarginLayout(
+            blocking,
+            margin,
+            settings.left_margin + settings.frame_width,
+            settings.page_height - settings.top_margin,
+            settings.bottom_margin,
+        )
+        layout.install(doc)
+        story.append(FlushMargin(layout))
     doc.build(story)
