@@ -298,7 +298,11 @@ class StagePlay(Screenplay):
         title_page: dict[str, list[str]] | None = None,
         front_matter: list[FrontMatterSection | CastList] | None = None,
         body: list[STAGEPLAY_TYPES] | None = None,
+        sources: list[int] | None = None,
     ) -> None:
         super().__init__(title_page)
         self.front_matter: list[FrontMatterSection | CastList] = front_matter or []
         self.body: list[STAGEPLAY_TYPES] = body or []
+        # For each body element, the index of the screenplay paragraph it
+        # came from.
+        self.sources: list[int] = sources or []

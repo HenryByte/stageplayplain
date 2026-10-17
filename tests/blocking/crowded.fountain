@@ -1,0 +1,48 @@
+Title: Tea
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=proscenium width=10 depth=7 units=m]]
+[[FSE ENTITY door-sl type=entrance pos=5.5,1]]
+[[FSE ENTITY door-sr type=entrance pos=-5.5,1]]
+[[FSE ENTITY dsc type=mark pos=0,-2.5]]
+[[FSE ENTITY jack type=cast]]
+[[FSE ENTITY cecily type=cast]]
+[[FSE ENTITY gwendolen type=cast]]
+[[FSE ENTITY algernon type=cast]]
+[[FSE ENTITY lane type=cast]]
+[[FSE ENTITY settee type=prop pos=-1,0 label="Settee"]]
+[[FSE ENTITY armchair type=prop pos=3,-0.5 label="Armchair"]]
+[[FSE ENTITY tea-table type=prop pos=1.5,1 label="Tea table"]]
+[[FSE ENTITY teapot type=prop on=tea-table label="Teapot"]]
+[[FSE ENTITY sandwiches type=prop on=tea-table label="Sandwiches"]]
+[[FSE ENTITY muffins type=prop on=tea-table label="Muffins"]]
+[[FSE ENTITY cigarette-case type=prop label="Cigarette case"]]
+[[FSE ENTITY diary type=prop label="Diary"]]
+
+## Scene 1
+
+[[FSE PRESET jack pos=-1.3,0 facing=dsc; PRESET cecily pos=-0.6,0 facing=dsc; PRESET gwendolen pos=3,-0.5 facing=270; PRESET algernon pos=1.5,1.6 facing=180; PRESET lane pos=2.2,1.8 facing=200; PRESET cigarette-case with=algernon; PRESET diary with=gwendolen]]
+
+Everyone at tea.
+
+[[FSE MOVE algernon pos=-1,0.6 facing=180]]
+
+ALGERNON
+I stand behind you both.
+
+[[FSE EXIT lane via=door-sl]]
+
+LANE
+Very good, sir.
+
+[[FSE MOVE jack pos=3.3,-0.2 facing=250]]
+
+JACK
+Gwendolen!
+
+[[FSE SET muffins with=jack]]
+
+JACK
+A muffin, at least.

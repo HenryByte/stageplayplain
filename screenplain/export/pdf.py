@@ -2,6 +2,7 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license.php
 
+import copy
 import os
 import re
 import sys
@@ -26,6 +27,8 @@ from reportlab.platypus import (
 )
 
 from screenplain import types
+from screenplain.export import plans
+from screenplain.fse import Blocking
 from screenplain.richstring import RichString
 from screenplain.types import (
     Action,
@@ -560,17 +563,39 @@ def pdf_metadata(screenplay: Screenplay) -> dict[str, str | list[str] | None]:
     }
 
 
+# How far `--blocking` shifts the text column left.
+BLOCKING_SHIFT = 0.5 * inch
+
+
+def with_blocking_margins(settings: Settings) -> Settings:
+    """The settings with the text column shifted left to make room for
+    margin plans. Column width, and so line breaks, are unchanged.
+    """
+    shifted = copy.copy(settings)
+    shifted.left_margin = settings.left_margin - BLOCKING_SHIFT
+    shifted.right_margin = settings.right_margin + BLOCKING_SHIFT
+    return shifted
+
+
 def to_pdf(
     screenplay: Screenplay,
     output_filename: TextIOWrapper,
     template_constructor: type[DocTemplate] = DocTemplate,
     settings: Settings | None = None,
+    blocking: Blocking | None = None,
 ) -> None:
+    """Writes a screenplay as PDF. With a `blocking`, each scene opens with
+    its scene plan.
+    """
     settings = settings or create_default_settings()
+    scene_plans = {}
+    if blocking is not None:
+        settings = with_blocking_margins(settings)
+        scene_plans = plans.scene_plans(blocking)
     story = get_title_page_story(screenplay, settings)
     has_title_page = bool(story)
 
-    for para in screenplay:
+    for index, para in enumerate(screenplay.paragraphs):
         if isinstance(para, Dialog):
             add_dialog(story, para, settings)
         elif isinstance(para, DualDialog):
@@ -592,6 +617,9 @@ def to_pdf(
         else:
             # Ignore unknown types
             pass
+        if index in scene_plans:
+            assert blocking is not None
+            story.append(plans.ScenePlan(blocking, scene_plans[index]))
 
     meta = pdf_metadata(screenplay)
     doc = template_constructor(

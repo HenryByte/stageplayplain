@@ -21,7 +21,7 @@ from screenplain.fse.model import (
     With,
 )
 from screenplain.parsers import fountain
-from screenplain.types import Dialog
+from screenplain.types import Dialog, Section
 
 HAMLET = Path(__file__).parent / "fse" / "hamlet.fountain"
 
@@ -308,3 +308,40 @@ def test_has_fse_notes() -> None:
     assert has("BOB\nHi.\n\nJIM ^\nHo. [[FSE MOVE x]]")
     assert has("Title: T\n[[FSE STAGE]]\n\nText")
     assert has("Hamlet waits. [[FSE MOVE x")
+
+
+# Stage-play front matter
+
+FRONT_MATTER_HEADINGS = (
+    "Title: Hamlet\nFormat: Stage Play\n\n"
+    "# Dramatis Personae\n\nHAMLET\n\n# Setting\n\nINT. A CASTLE\n\n===\n\n"
+    "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+    "[[FSE ENTITY hamlet type=cast]]\n\n"
+    "# Act One\n\n## Scene 1\n\n[[FSE PRESET hamlet pos=0,0]]\n\n"
+    "HAMLET\nTo be.\n"
+)
+
+
+def test_front_matter_headings_are_not_scene_boundaries_in_a_stage_play() -> None:
+    screenplay = fountain.parse(StringIO(FRONT_MATTER_HEADINGS))
+    blocking = fse.process(screenplay, stageplay=True)
+    assert [] == blocking.reports
+    boundaries = [scene.boundary for scene in blocking.scenes]
+    assert all(isinstance(boundary, Section) for boundary in boundaries)
+    assert ["Act One", "Scene 1"] == [
+        str(boundary.text) for boundary in boundaries if isinstance(boundary, Section)
+    ]
+    assert At(Point(0, 0)) == blocking.scenes[1].preset.whereabouts("hamlet")
+
+
+def test_front_matter_headings_are_scene_boundaries_in_a_screenplay() -> None:
+    with pytest.raises(fse.FseError) as raised:
+        process(FRONT_MATTER_HEADINGS)
+    assert "E12" == raised.value.report.code
+
+
+def test_a_stage_play_without_a_page_break_has_no_front_matter() -> None:
+    source = FRONT_MATTER_HEADINGS.replace("===\n\n", "")
+    with pytest.raises(fse.FseError) as raised:
+        fse.process(fountain.parse(StringIO(source)), stageplay=True)
+    assert "E12" == raised.value.report.code

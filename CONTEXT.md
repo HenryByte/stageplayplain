@@ -71,7 +71,7 @@ One keyword-led instruction inside an FSE note; a note may hold several, separat
 Any tool that reads FSE directives; a conforming processor parses them and reports the spec's errors and warnings.
 
 **Scene boundary**:
-A slugline, a forced (`.`) scene heading, or a section heading of any depth (`#`, `##`, …). Applies in screenplay and stage-play mode alike.
+A slugline, a forced (`.`) scene heading, or a section heading of any depth (`#`, `##`, …). Applies in screenplay and stage-play mode alike, except that headings in a stage play's front matter are not scene boundaries.
 _Avoid_: scene break (ambiguous with page break `===`)
 
 **PRESET**:
@@ -130,5 +130,5 @@ One rounded label on a plan standing in for entities drawn on top of each other:
 _Avoid_: cluster, pill, group
 
 **Front matter**:
-In a stage play, everything before the first page break (cast list, setting, notes): not part of the performance. Under blocking output it may hold no FSE note, declarations included, since it has no scenes to draw plans in.
+In a stage play, everything before the first page break (cast list, setting, notes): not part of the performance. Its headings are not scene boundaries, so the declaration block may follow it. Under blocking output it may hold no FSE note, declarations included, since it has no scenes to draw plans in.
 _Avoid_: preamble, prelims

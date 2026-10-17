@@ -23,12 +23,14 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import PageBreakIfNotEmpty
 
+from screenplain.export import plans
 from screenplain.export.pdf import (
     FontSettings,
     Settings,
     get_title_page_story,
     pdf_metadata,
 )
+from screenplain.fse import Blocking
 from screenplain.richstring import RichString
 from screenplain.stageplay import split_cue
 from screenplain.types import (
@@ -343,9 +345,12 @@ def _front_section_story(
     return story
 
 
-def _body_story(play: StagePlay, settings: StagePlaySettings) -> list[Flowable]:
+def _body_story(
+    play: StagePlay, settings: StagePlaySettings, blocking: Blocking | None = None
+) -> list[Flowable]:
     story: list[Flowable] = [PageBreakIfNotEmpty(), BodyStart()]
-    for para in play.body:
+    scene_plans = plans.scene_plans(blocking) if blocking is not None else {}
+    for index, para in enumerate(play.body):
         if isinstance(para, Act):
             # BodyStart counts as page content, so don't break straight after it.
             if not isinstance(story[-1], BodyStart):
@@ -371,6 +376,10 @@ def _body_story(play: StagePlay, settings: StagePlaySettings) -> list[Flowable]:
             story.append(Paragraph(para.line.to_html(), settings.transition_style))
         elif isinstance(para, PageBreak):
             story.append(platypus.PageBreak())
+        source = play.sources[index] if index < len(play.sources) else None
+        if source in scene_plans:
+            assert blocking is not None
+            story.append(plans.ScenePlan(blocking, scene_plans[source]))
     return story
 
 
@@ -378,7 +387,11 @@ def to_pdf(
     play: StagePlay,
     output_filename: TextIOWrapper,
     settings: StagePlaySettings | None = None,
+    blocking: Blocking | None = None,
 ) -> None:
+    """Writes a stage play as PDF. With a `blocking`, each scene opens with
+    its scene plan.
+    """
     settings = settings or StagePlaySettings()
     story = get_title_page_story(play, settings)
     for section in play.front_matter:
@@ -386,7 +399,7 @@ def to_pdf(
             story += _cast_list_story(section, settings)
         else:
             story += _front_section_story(section, settings)
-    story += _body_story(play, settings)
+    story += _body_story(play, settings, blocking)
 
     doc = StagePlayDocTemplate(
         output_filename,

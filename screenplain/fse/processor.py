@@ -125,18 +125,31 @@ def _carrier_of(whereabouts: Whereabouts) -> str | None:
     return None
 
 
-def process(screenplay: Screenplay) -> Blocking:
+def process(screenplay: Screenplay, *, stageplay: bool = False) -> Blocking:
     """Processes a script's FSE notes.
+
+    In a stage play, headings in the front matter (before the first page
+    break) are not scene boundaries.
 
     Returns the `Blocking`, or raises `FseError` on the first error.
     """
-    return _Processor(screenplay).run()
+    return _Processor(screenplay, stageplay).run()
 
 
 class _Processor:
-    def __init__(self, screenplay: Screenplay) -> None:
+    def __init__(self, screenplay: Screenplay, stageplay: bool = False) -> None:
         self.screenplay = screenplay
         self.paragraphs = screenplay.paragraphs
+        self.body_start = 0
+        if stageplay:
+            self.body_start = next(
+                (
+                    index + 1
+                    for index, para in enumerate(self.paragraphs)
+                    if isinstance(para, PageBreak)
+                ),
+                0,
+            )
         self.positions = ScriptPositions(screenplay)
         self.sites = collect_sites(screenplay)
         self.outcomes = [_tokenise(site) for site in self.sites]
@@ -149,8 +162,8 @@ class _Processor:
         self.first_boundary = next(
             (
                 index
-                for index, para in enumerate(self.paragraphs)
-                if isinstance(para, (Slug, Section))
+                for index in range(len(self.paragraphs))
+                if self._is_boundary(index)
             ),
             len(self.paragraphs),
         )
@@ -173,6 +186,11 @@ class _Processor:
         self.moves: dict[tuple[str, Cue], Move] = {}
         self.ever_onstage: set[str] = set()
         self.unmatched_cues: set[str] = set()
+
+    def _is_boundary(self, index: int) -> bool:
+        return index >= self.body_start and isinstance(
+            self.paragraphs[index], (Slug, Section)
+        )
 
     # Reporting
 
@@ -386,7 +404,8 @@ class _Processor:
         for index in by_paragraph.pop(-1, []):
             self._note(index)
         for paragraph, para in enumerate(self.paragraphs):
-            if isinstance(para, (Slug, Section)):
+            if self._is_boundary(paragraph):
+                assert isinstance(para, (Slug, Section))
                 self._boundary(para)
             elif not isinstance(para, (Note, PageBreak)):
                 self.content = True
@@ -869,7 +888,7 @@ class _Processor:
                 for index in range(
                     self.sites[self.current].cue.paragraph + 1, len(self.paragraphs)
                 )
-                if isinstance(self.paragraphs[index], (Slug, Section))
+                if self._is_boundary(index)
             ),
             None,
         )

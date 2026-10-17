@@ -135,6 +135,26 @@ def has_fse_notes(screenplay: Screenplay) -> bool:
     return False
 
 
+def front_matter_note(screenplay: Screenplay) -> int | None:
+    """The line of the first FSE note in a stage play's front matter
+    (before the first page break), or None.
+    """
+    first_break = next(
+        (
+            index
+            for index, para in enumerate(screenplay.paragraphs)
+            if isinstance(para, PageBreak)
+        ),
+        None,
+    )
+    if first_break is None:
+        return None
+    for site in collect_sites(screenplay):
+        if 0 <= site.cue.paragraph < first_break:
+            return site.line
+    return None
+
+
 def words(text: str) -> int:
     return len(_word_re.findall(text))
 

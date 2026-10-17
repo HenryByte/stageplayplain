@@ -115,9 +115,13 @@ def to_stageplay(screenplay: Screenplay) -> StagePlay:
 
     Standalone notes are dropped, since no stage play exporter shows them.
     """
-    paragraphs: list[ELEMENT_TYPES] = [
-        para for para in screenplay if not isinstance(para, Note)
+    indexed = [
+        (index, para)
+        for index, para in enumerate(screenplay.paragraphs)
+        if not isinstance(para, Note)
     ]
+    indexes = [index for index, _ in indexed]
+    paragraphs: list[ELEMENT_TYPES] = [para for _, para in indexed]
     boundary = next(
         (i for i, para in enumerate(paragraphs) if isinstance(para, PageBreak)),
         None,
@@ -128,12 +132,14 @@ def to_stageplay(screenplay: Screenplay) -> StagePlay:
     else:
         front_paragraphs = paragraphs[:boundary]
         body_paragraphs = paragraphs[boundary + 1 :]
+    body_start = len(paragraphs) - len(body_paragraphs)
 
     names = _collect_names(front_paragraphs, body_paragraphs)
     return StagePlay(
         screenplay.title_page,
         _front_matter(front_paragraphs, names),
         [_body_paragraph(para, names) for para in body_paragraphs],
+        indexes[body_start:],
     )
 
 

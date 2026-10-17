@@ -7,7 +7,7 @@
 from screenplain.fse.blocking import Blocking, Change, Scene, Step, Timeline
 from screenplain.fse.processor import process
 from screenplain.fse.reports import FseError, Report, Severity
-from screenplain.fse.script import has_fse_notes
+from screenplain.fse.script import front_matter_note, has_fse_notes
 
 __all__ = [
     "Blocking",
@@ -18,6 +18,7 @@ __all__ = [
     "Severity",
     "Step",
     "Timeline",
+    "front_matter_note",
     "has_fse_notes",
     "process",
 ]

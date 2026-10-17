@@ -1,0 +1,54 @@
+Title: The Ballroom
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=proscenium width=12 depth=8 units=m]]
+[[FSE ENTITY door-sl type=entrance pos=6.5,1]]
+[[FSE ENTITY door-sr type=entrance pos=-6.5,1]]
+[[FSE ENTITY stairs type=entrance pos=0,4.5]]
+[[FSE ENTITY dsc type=mark pos=0,-3]]
+[[FSE ENTITY lady-b type=cast cue="LADY BRACKNELL"]]
+[[FSE ENTITY jack type=cast]]
+[[FSE ENTITY algernon type=cast]]
+[[FSE ENTITY gwendolen type=cast]]
+[[FSE ENTITY cecily type=cast]]
+[[FSE ENTITY chasuble type=cast cue="DR CHASUBLE"]]
+[[FSE ENTITY prism type=cast cue="MISS PRISM"]]
+[[FSE ENTITY lane type=cast]]
+[[FSE ENTITY merriman type=cast]]
+[[FSE ENTITY guest-1 type=cast cue="FIRST GUEST"]]
+[[FSE ENTITY guest-2 type=cast cue="SECOND GUEST"]]
+[[FSE ENTITY guest-3 type=cast cue="THIRD GUEST"]]
+[[FSE ENTITY guest-4 type=cast cue="FOURTH GUEST"]]
+[[FSE ENTITY guest-5 type=cast cue="FIFTH GUEST"]]
+[[FSE ENTITY musician type=cast]]
+[[FSE ENTITY footman type=cast]]
+[[FSE ENTITY piano type=prop pos=-4,2.5 label="Grand piano"]]
+[[FSE ENTITY settee type=prop pos=-1,0 label="Settee"]]
+[[FSE ENTITY tea-table type=prop pos=2.5,1 label="Tea table"]]
+[[FSE ENTITY armchair type=prop pos=3.5,-0.5 label="Armchair"]]
+[[FSE ENTITY teapot type=prop on=tea-table label="Silver teapot"]]
+[[FSE ENTITY sandwiches type=prop on=tea-table label="Plate of cucumber sandwiches, thinly cut"]]
+[[FSE ENTITY muffins type=prop on=tea-table]]
+[[FSE ENTITY handbag type=prop label="Black leather handbag"]]
+[[FSE ENTITY diary type=prop]]
+[[FSE ENTITY cigarette-case type=prop label="Cigarette case"]]
+[[FSE ENTITY candelabra type=prop pos=-5,3]]
+[[FSE ENTITY music-stand type=prop pos=-3.2,3]]
+[[FSE ENTITY punch-bowl type=prop pos=5,3]]
+[[FSE ENTITY fan type=prop]]
+
+## Scene 1
+
+[[FSE PRESET jack pos=-1,0.3 facing=dsc; PRESET algernon pos=-4,2 facing=90; PRESET gwendolen pos=3.5,-0.5 facing=270; PRESET lane pos=2.5,2 facing=180; PRESET cecily pos=1,-1; PRESET chasuble pos=-2,-2; PRESET prism pos=-1.5,-2.5; PRESET merriman pos=5,2.5; PRESET guest-1 pos=4,3; PRESET guest-2 pos=4.5,3.4; PRESET guest-3 pos=3,3.2; PRESET guest-4 pos=-5,1; PRESET guest-5 pos=-5.5,0; PRESET musician pos=-3.2,2.6; PRESET footman pos=0,3.5; PRESET cigarette-case with=algernon; PRESET diary with=gwendolen; PRESET fan with=cecily]]
+
+!@Algernon plays the piano badly. @Lane lays out tea. The guests mill about.
+
+ALGERNON
+Did you hear what I was playing, Lane?
+
+[[FSE ENTER lady-b from=door-sl pos=5,0; SET handbag with=lady-b]]
+
+LADY BRACKNELL
+A handbag?

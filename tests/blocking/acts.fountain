@@ -1,0 +1,41 @@
+Title: Acts
+Format: Stage Play
+
+===
+
+[[FSE STAGE type=proscenium width=10 depth=7]]
+[[FSE ENTITY door type=entrance pos=5.5,0]]
+[[FSE ENTITY mary type=cast]]
+[[FSE ENTITY arthur type=cast]]
+[[FSE ENTITY sofa type=prop pos=-1,0 label="Sofa"]]
+[[FSE ENTITY letter type=prop]]
+
+# Act One
+
+## Scene 1
+
+[[FSE PRESET mary pos=-1,0.3 facing=270]]
+
+!@Mary sits on the sofa.
+
+[[FSE ENTER arthur from=door pos=3,0]]
+
+ARTHUR
+Mary.
+
+# Act Two
+
+!The curtain rises on an empty room.
+
+[[FSE EXIT mary via=door; EXIT arthur via=door]]
+
+## Scene 2
+
+[[FSE PRESET arthur pos=0,-1; PRESET letter with=arthur]]
+
+## Scene 3
+
+[[FSE PRESET mary pos=2,0]]
+
+MARY
+A letter?
