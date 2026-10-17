@@ -155,6 +155,7 @@ class Move(Directive):
     facing: Facing = None
     by: str | None = None
     until_arrive: bool = False
+    via: tuple[Location, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -194,8 +195,16 @@ class Preset(Directive):
     facing: Facing = None
 
 
+@dataclass(frozen=True, kw_only=True)
+class Note(Directive):
+    """A note for a cast member, printed beside the script at its cue."""
+
+    subject: str
+    note: str
+
+
 type AnyDirective = (
-    Stage | Entity | Enter | Exit | Move | Via | Arrive | Set | Strike | Preset
+    Stage | Entity | Enter | Exit | Move | Via | Arrive | Set | Strike | Preset | Note
 )
 
 KEYS: dict[str, tuple[str, ...]] = {
@@ -203,12 +212,13 @@ KEYS: dict[str, tuple[str, ...]] = {
     "ENTITY": ("type", "pos", "on", "with", "facing", "cue", "label"),
     "ENTER": ("from", "pos", "facing"),
     "EXIT": ("via",),
-    "MOVE": ("pos", "facing", "by", "until"),
+    "MOVE": ("pos", "facing", "by", "until", "via"),
     "VIA": ("pos",),
     "ARRIVE": ("facing",),
     "SET": ("pos", "on", "with", "facing", "by"),
     "STRIKE": ("by",),
     "PRESET": ("pos", "on", "with", "facing"),
+    "NOTE": ("text",),
 }
 
 # Keys allowed on ENTITY per entity type.
@@ -263,6 +273,16 @@ class _Values:
             raise self._bad(key, "is not a coordinate or id")
         return location
 
+    def route(self, key: str) -> tuple[Location, ...]:
+        """Parses `|`-separated locations, such as `0,1|2,2|door`."""
+        value = self.raw.get(key)
+        if value is None:
+            return ()
+        locations = tuple(parse_location(part) for part in value.split("|"))
+        if None in locations:
+            raise self._bad(key, "is not a list of coordinates or ids")
+        return locations  # ty: ignore[invalid-return-type]
+
     def facing(self) -> Facing:
         value = self.raw.get("facing")
         if value is None:
@@ -272,7 +292,7 @@ class _Values:
             raise self._bad("facing", "is not a bearing, coordinate or id")
         return direction
 
-    def check_all(self) -> None:
+    def check_all(self, keyword: str) -> None:
         """Checks every value's type, in source order."""
         for key in self.raw:
             if key in ("width", "depth", "radius"):
@@ -281,6 +301,8 @@ class _Values:
                 self.location(key)
             elif key == "facing":
                 self.facing()
+            elif key == "via" and keyword == "MOVE":
+                self.route(key)
             elif key in ("on", "with", "from", "via", "by", "front"):
                 self.ident(key)
             elif key == "units" and self.raw[key] not in UNITS:
@@ -308,7 +330,7 @@ def validate(
             raise Fault("E18", f"{key} is given twice")
         seen.add(key)
     values = _Values(raw.attributes)
-    values.check_all()
+    values.check_all(keyword)
 
     common = Directive(cue=cue, line=line, text=raw.text)
     if keyword == "STAGE":
@@ -352,12 +374,17 @@ def validate(
             pos = values.location("pos")
             if pos is None:
                 raise Fault("E08", "MOVE needs pos")
+            if "via" in values and "until" in values:
+                raise Fault(
+                    "E16", "via is not an attribute of an open MOVE; write VIA notes"
+                )
             return Move(
                 **base(),
                 pos=pos,
                 facing=values.facing(),
                 by=values.ident("by"),
                 until_arrive="until" in values,
+                via=values.route("via"),
             )
         case "VIA":
             pos = values.location("pos")
@@ -377,6 +404,11 @@ def validate(
             )
         case "STRIKE":
             return Strike(**base(), by=values.ident("by"))
+        case "NOTE":
+            text = values.text("text")
+            if not text:
+                raise Fault("E08", "NOTE needs text")
+            return Note(**base(), note=text)
         case _:
             assert keyword == "PRESET"
             return Preset(

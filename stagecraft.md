@@ -50,7 +50,7 @@ Reading a directive happens in two layers. **Tokenising** splits the note into k
 
 ### 2.1 Keywords
 
-Keywords are uppercase and drawn from a fixed set: `STAGE`, `ENTITY`, `ENTER`, `EXIT`, `MOVE`, `VIA`, `ARRIVE`, `SET`, `STRIKE` and `PRESET`. Within an FSE note, an unknown keyword (including a lowercase one) makes the note a near-miss (see 2.6).
+Keywords are uppercase and drawn from a fixed set: `STAGE`, `ENTITY`, `ENTER`, `EXIT`, `MOVE`, `VIA`, `ARRIVE`, `SET`, `STRIKE`, `PRESET` and `NOTE`. Within an FSE note, an unknown keyword (including a lowercase one) makes the note a near-miss (see 2.6).
 
 ### 2.2 Ids
 
@@ -183,7 +183,7 @@ Marks and entrances are fixed: they MUST NOT be the subject of a movement direct
 - `pos=<location>` places the entity on the stage floor at a coordinate or mark.
 - `on=<prop id>` places a prop on another prop. It moves with its parent.
 - `with=<cast id>` means the prop is carried by that cast member. It moves with them.
-- `facing=<direction>` gives the direction a cast member faces: either a location they face toward (a coordinate or a mark or entrance id), or a bearing in degrees, where 0 is +y and angles increase clockwise. Any number is accepted and taken modulo 360, so `facing=-90` equals `facing=270`. A processor MUST accept all three forms. Because an id is never a number (2.2), the form is always unambiguous: a number is a bearing, `x,y` is a coordinate, anything else is an id. Props have no facing: `facing` on any directive whose subject is a prop is an unknown attribute (E16).
+- `facing=<direction>` gives the direction a cast member faces: either something they face toward (a coordinate, a mark or entrance id, or the id of another cast member or a prop), or a bearing in degrees, where 0 is +y and angles increase clockwise. Any number is accepted and taken modulo 360, so `facing=-90` equals `facing=270`. A processor MUST accept all three forms. Because an id is never a number (2.2), the form is always unambiguous: a number is a bearing, `x,y` is a coordinate, anything else is an id. Props have no facing: `facing` on any directive whose subject is a prop is an unknown attribute (E16). A cast member facing another cast member or a prop keeps facing it as it moves or is carried, until their own facing changes; while it is offstage, their facing is drawn as unset. Facing themselves is a bad value (E17).
 
 An entity has at most one of `pos`, `on` and `with` at any time. A prop `on` or `with` something has its carrier's position at every point in the script, including while the carrier is in transit (5.7).
 
@@ -226,7 +226,7 @@ Eight directives change where entities are. Each one's subject types are fixed (
 [[FSE ENTER hamlet from=vom-a pos=0,3 facing=window]]
 ```
 
-Brings an offstage cast member or prop on. `from` (an `entrance` id) is REQUIRED for cast. `pos` gives where they arrive; if omitted, they stop at the entrance's position. A cast member's `facing` is the one given here, or else the one set while offstage, or else unset.
+Brings an offstage cast member or prop on. `from` (an `entrance` id) is REQUIRED for cast. `pos` gives where they arrive; if omitted, they stop at the entrance's position. `pos` may also name an onstage cast member or prop, to come on and go straight up to it (see 5.3). A cast member's `facing` is the one given here, or else the one set while offstage, or else unset.
 
 Props an entering cast member carries come on with them: either attached while offstage (`ENTITY`, `PRESET` or `SET ... with=`), or given with `SET ... with=` in the same note.
 
@@ -249,7 +249,20 @@ The reserved subject `all` takes every onstage cast member off at once. `via` is
 [[FSE MOVE hamlet pos=window facing=table]]
 ```
 
-Moves an onstage cast member, or a prop on the floor, to a new location. `pos` is REQUIRED. `facing` is optional and, if omitted, is unchanged. A `MOVE` is a straight cross; a cross that does not run straight is written as an open move with a `VIA` for each turning point (see 5.7).
+Moves an onstage cast member, or a prop on the floor, to a new location. `pos` is REQUIRED. `facing` is optional and, if omitted, is unchanged. A `MOVE` is a straight cross unless it has a `via`.
+
+```
+[[FSE MOVE sam pos=alex facing=alex]]
+```
+
+`pos` may name another cast member or a prop, onstage at the cue, to go up to it: the mover stops 1 m (converted to the declared unit) short of where it is at the cue (a carried prop is where its carrier stands), on the line from where the mover comes from (their last `via` point, or else where they stand; for `ENTER`, the entrance). A cast member going up to someone or something faces it, unless the directive gives another `facing`. Someone already that close stays where they are. The place is fixed at the cue: the mover does not follow if it then moves. Naming something offstage is an error (E05), and naming the subject itself, or a prop it carries, a bad value (E17). `SET` on a prop also takes a cast member or prop as `pos`, but puts the prop down exactly where it stands at the cue (5.4). `VIA`, `ENTITY` and `PRESET` take no cast member or prop as `pos` (E04).
+
+```
+[[FSE MOVE sam pos=mirror via=0,1]]
+[[FSE MOVE sam pos=0,0 via=-1,2|door|mirror]]
+```
+
+`via` is OPTIONAL and lists the turning points of the cross in order, separated by `|`. Each is a coordinate or a mark or entrance id. The move is still a single step at its cue: `MOVE sam pos=mirror via=0,1` is shorthand for an open move with that `VIA` and its `ARRIVE` in consecutive notes, and draws the same. `via` is not allowed with `until=arrive` (E16): an open move gives each turning point its own cue with a `VIA` note (see 5.7).
 
 A prop `MOVE` applies only to a prop on the floor (with a `pos`); `MOVE` on a prop that is `on` or `with` something is an error (E20). To move it across the floor, first `SET` it down, then `MOVE` it.
 
@@ -263,7 +276,7 @@ An optional `by=<cast id>` on a prop `MOVE` records who moves it. `by` on a cast
 [[FSE SET lantern pos=-1,0 by=horatio]]
 ```
 
-Changes a prop's location instantly: a pick-up, put-down or handoff. Exactly one of `pos`, `on` or `with` is REQUIRED. `by` is OPTIONAL and names the cast member performing the action; when present, it is checked for reach (W04).
+Changes a prop's location instantly: a pick-up, put-down or handoff. Exactly one of `pos`, `on` or `with` is REQUIRED. `pos` may name an onstage cast member or prop to put the prop down where it stands, as in `SET bag pos=alex` to drop the bag at Alex's feet; naming the prop itself, or something on or with it, is a bad value (E17). `by` is OPTIONAL and names the cast member performing the action; when present, it is checked for reach (W04).
 
 The prop MAY be offstage before the `SET`, and the target of `on` or `with` MAY be offstage: the prop is then attached offstage and comes on with its carrier (4.2.1). A `SET` on a prop in transit closes its open move implicitly: the destination is discarded and the `SET` applies.
 
@@ -358,6 +371,16 @@ admit no discourse to your beauty.
 Both crosses start before Hamlet's first line. Ophelia arrives in the gap after "Are you fair?", so her cross spans three lines; Hamlet arrives after his final speech. Written inline as `Are you fair? [[FSE ARRIVE ophelia]]`, her arrival would land on "fair" instead (see 6.2).
 
 **Moving together.** Two cast members walking side by side are two open moves started in one note, as above. A `group` entity for formation movement remains an open question (Appendix C).
+
+### 5.8 NOTE
+
+```
+[[FSE NOTE sam text="Looks at the mirror with longing in his eye"]]
+SAM
+I look awful. [[FSE NOTE text="Quietly, to himself"]]
+```
+
+A note for a cast member: an acting note, an intention, a piece of business too small for a `MOVE`. The subject is a cast member (E04), and may be omitted inside their dialogue (6.2). `text` is REQUIRED (E08); quote it when it has spaces. `NOTE` changes nothing about where anyone is, so it may share a note with any directive on the same cast member, and it never makes a picture change. A renderer SHOULD print it beside the script at its cue, with the cast member it is for (8.1).
 
 ## 6. Timing and scope
 
@@ -454,7 +477,7 @@ A conforming processor MUST report the errors below and SHOULD report the warnin
 | `E02 unknown-id` | A directive refers to an id that is not declared. |
 | `E03 duplicate-id` | An id is declared more than once. |
 | `E04 wrong-type` | A subject or attribute refers to an entity of the wrong type, e.g. `with=table`, `from=hamlet`, `STRIKE hamlet` or `EXIT skull`. |
-| `E05 not-onstage` | `MOVE`, `EXIT` or `STRIKE` on an entity that is offstage (4.2.1). |
+| `E05 not-onstage` | `MOVE`, `EXIT` or `STRIKE` on an entity that is offstage (4.2.1), or a `MOVE` or `ENTER` whose `pos` names an offstage cast member or prop (5.3). |
 | `E06 already-onstage` | `ENTER` on an entity that is already onstage. |
 | `E07 fixed-entity` | A movement directive names a `mark` or `entrance`. |
 | `E08 missing-attribute` | A required subject or attribute is absent, e.g. a cast `ENTER` without `from`, a prop `ENTER` with neither `from` nor `pos`, or a directive with no subject outside dialogue and parentheticals (see 6.2). |
@@ -497,7 +520,7 @@ Some Fountain tools apply emphasis (`*italic*`, `_underline_`) before they remov
 An FSE-aware renderer SHOULD offer at least these modes:
 
 - **Script.** Directives are hidden. Suitable for the actor's script and for submission.
-- **Prompt book.** Directives are rendered in the margin beside the line or word they are anchored to, in a compact notation (e.g. `HAM → WINDOW`).
+- **Prompt book.** Directives are rendered in the margin beside the line or word they are anchored to, in a compact notation (e.g. `HAM → WINDOW`). Each `NOTE` is printed in full there, with whom it is for.
 - **Generated paperwork.** Per-scene preset sheets, scene-change shift lists (see 6.4), and a prop tracking table showing each prop's location through the play.
 
 A renderer MAY also produce a plan view: a ground plan of the declared stage showing entity positions at any point in the script.
@@ -574,12 +597,13 @@ From this a processor can derive, without further input:
 | `ENTITY` | id | `type`; `pos` for mark and entrance | `pos`, `on`, `with` (prop), `facing` (cast), `cue` (cast), `label` |
 | `ENTER` | cast or prop | `from` (cast); `from` or `pos` (prop) | `pos`, `facing` (cast) |
 | `EXIT` | cast, or all | `via` (not for `all`) | `via` (for `all`) |
-| `MOVE` | cast, or prop on the floor | `pos` | `facing` (cast), `by` (prop), `until=arrive` |
+| `MOVE` | cast, or prop on the floor | `pos` | `facing` (cast), `by` (prop), `until=arrive` or `via` |
 | `VIA` | entity in transit | `pos` | none |
 | `ARRIVE` | entity in transit | none | `facing` |
 | `SET` | prop, or cast for `facing` | one of `pos`, `on`, `with`, or `facing` | `by` |
 | `STRIKE` | onstage prop, or all | none | `by` (not for `all`) |
 | `PRESET` | cast or prop | none (no location means offstage) | `pos`, `on`, `with` (prop), `facing` (cast) |
+| `NOTE` | cast | `text` | none |
 
 Every directive appears inside a note that begins with the `FSE` marker (see 2).
 
@@ -594,7 +618,7 @@ note       = "FSE" ws directive { ws? ";" ws? directive } [ ws? ";" ] ws? ;
 directive  = keyword [ ws subject ] { ws attribute } ;
 keyword    = "STAGE" | "ENTITY" | "ENTER" | "EXIT"
            | "MOVE" | "VIA" | "ARRIVE"
-           | "SET" | "STRIKE" | "PRESET" ;
+           | "SET" | "STRIKE" | "PRESET" | "NOTE" ;
 subject    = value ;                      (* contains no "=" *)
 attribute  = key "=" value ;
 key        = keychar { keychar } ;        (* bchar except "=" *)
@@ -616,6 +640,7 @@ id         = idstart { idchar } ;             (* and not a number *)
 idstart    = "a".."z" | "0".."9" ;
 idchar     = idstart | "-" | "_" ;
 location   = coordinate | id ;
+route      = location { "|" location } ;  (* MOVE's via *)
 direction  = location | number ;              (* number = bearing *)
 ```
 

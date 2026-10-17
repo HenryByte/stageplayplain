@@ -1,0 +1,14 @@
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY mirror type=mark pos=3,3]]
+[[FSE ENTITY door type=entrance pos=5,0]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=mirror via=0,1]]
+
+She checks her hair.
+
+[[FSE MOVE sam pos=0,0 via=-1,2|door|mirror facing=0]]
+
+And back again.

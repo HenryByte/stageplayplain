@@ -45,8 +45,26 @@ def test_moves_enters_and_exits_are_picture_changes() -> None:
     )
 
 
-def test_facing_alone_is_not_a_picture_change() -> None:
-    assert [] == groups("[[FSE SET hamlet facing=90]]\n\nHe turns.\n")
+def test_a_turn_in_place_is_a_picture_change() -> None:
+    assert [["SET hamlet facing=90"]] == groups(
+        "[[FSE SET hamlet facing=90]]\n\nHe turns.\n"
+    )
+
+
+def test_setting_the_facing_it_has_is_not_a_picture_change() -> None:
+    assert [["SET hamlet facing=90"]] == groups(
+        "[[FSE SET hamlet facing=90]]\n\nHe turns.\n\n"
+        "[[FSE SET hamlet facing=90]]\n\nHe stays turned.\n"
+    )
+
+
+def test_facing_someone_who_moves_is_not_a_picture_change() -> None:
+    blocking = process(
+        DECLARATIONS + "[[FSE SET hamlet facing=horatio]]\n\nHe turns.\n\n"
+        "[[FSE MOVE horatio pos=3,3]]\n\nHoratio crosses.\n"
+    )
+    _, cross = fse.step_groups(blocking)
+    assert {"horatio"} == fse.picture_changes(blocking, cross.before, cross.after)
 
 
 def test_a_move_to_where_it_stands_is_not_a_picture_change() -> None:
@@ -86,7 +104,8 @@ def test_offstage_changes_are_not_picture_changes() -> None:
     assert [["EXIT horatio via=door"], ["STRIKE skull"]] == groups(
         "[[FSE EXIT horatio via=door]]\n\nHe goes.\n\n"
         "[[FSE STRIKE skull]]\n\nIt goes.\n\n"
-        "[[FSE SET skull with=horatio]]\n\nOff, he takes it.\n"
+        "[[FSE SET skull with=horatio]]\n\nOff, he takes it.\n\n"
+        "[[FSE SET horatio facing=90]]\n\nOff, he turns.\n"
     )
 
 

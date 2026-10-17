@@ -3,8 +3,8 @@ earn a margin plan.
 
 A step group is consecutive steps with nothing of the script between
 their notes. It earns a plan when any of its steps is a picture change:
-some cast member's or prop's place on the floor, or whether it is onstage,
-changes. Steps at the top of a scene never do: the scene plan shows them.
+some cast member's or prop's place on the floor, whether it is onstage, or
+an onstage cast member's facing changes. Steps at the top of a scene never do: the scene plan shows them.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from screenplain.fse.blocking import Blocking, Scene, Step
 from screenplain.fse.model import (
     At,
     Cue,
+    Facing,
     Moving,
     OpenMove,
     Point,
@@ -30,27 +31,29 @@ from screenplain.types import (
 )
 
 # What an entity looks like on a plan: offstage, or onstage with whether it
-# is carried and where its carrier chain meets the floor.
-type Picture = tuple[bool] | tuple[bool, bool, Point | OpenMove]
+# is carried, where its carrier chain meets the floor, and its facing.
+type Picture = tuple[bool] | tuple[bool, bool, Point | OpenMove, Facing]
 
 
 def picture(blocking: Blocking, state: State, entity: str) -> Picture:
     """How an entity shows on a plan. A change of carrier alone, such as a
     hand-over in place, leaves it unchanged; being picked up or put down
-    does not.
+    does not. A facing toward someone is compared as written, so it does
+    not change when they move.
     """
     if not state.onstage(entity):
         return (False,)
     attached = carrier(state.whereabouts(entity)) is not None
+    facing = state.facing(entity)
     seen: set[str] = set()
     current = entity
     while current not in seen:
         seen.add(current)
         whereabouts = state.whereabouts(current)
         if isinstance(whereabouts, At):
-            return (True, attached, blocking.resolve(whereabouts.location))
+            return (True, attached, blocking.resolve(whereabouts.location), facing)
         if isinstance(whereabouts, Moving):
-            return (True, attached, whereabouts.move)
+            return (True, attached, whereabouts.move, facing)
         parent = carrier(whereabouts)
         assert parent is not None
         current = parent

@@ -27,11 +27,11 @@ from screenplain.export import plans
 from screenplain.export.margin_plans import (
     Cues,
     FlushMargin,
+    MarginItem,
     MarginLayout,
-    MarginPlan,
     cue_tag,
     html_with_cues,
-    margin_plans,
+    margin_items,
 )
 from screenplain.export.pdf import (
     FontSettings,
@@ -506,10 +506,10 @@ def to_pdf(
             story += _cast_list_story(section, settings)
         else:
             story += _front_section_story(section, settings)
-    margin: list[MarginPlan] = []
+    margin: list[MarginItem] = []
     cues = None
     if blocking is not None:
-        margin = margin_plans(blocking)
+        margin = margin_items(blocking)
         cues = Cues.place(blocking, margin)
     story += _body_story(play, settings, blocking, cues)
 

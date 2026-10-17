@@ -13,21 +13,23 @@ down the right margin, without moving the text.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import override
 
 from reportlab import platypus
 from reportlab.lib.units import mm
+from reportlab.lib.utils import simpleSplit
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import BaseDocTemplate, Flowable, Spacer
 
 from screenplain.export import plans
 from screenplain.export.plans import Geometry
-from screenplain.fse import Blocking, StepGroup, picture_changes, step_groups
-from screenplain.fse.directives import Enter, Exit
-from screenplain.fse.model import Moving, Place, Point, carrier
+from screenplain.fse import Blocking, Scene, StepGroup, picture_changes, step_groups
+from screenplain.fse.directives import Enter, Exit, Move
+from screenplain.fse.directives import Note as NoteDirective
+from screenplain.fse.model import Cast, Cue, Moving, Place, Point, carrier
 from screenplain.richstring import RichString, Segment
 from screenplain.types import Note, PageBreak
 
@@ -42,11 +44,21 @@ MARKER_FONT_SIZE = 6
 NUMBER_FONT_SIZE = 6
 CARRIED_SIZE = 2.2
 
+# A NOTE for a cast member, in a box the width of a plan.
+NOTE_LABEL = "*"
+NOTE_FONT_SIZE = 6
+NOTE_LEADING = 7
+NOTE_PAD = 2
+
 PATH_DASH = (0.6, 1.2)
 PATH_WIDTH = 0.8
 REMAINDER_DASH = (1.5, 1.2)
 REMAINDER_GREY = 0.3
 ARROW_HEAD = 3
+# A turn in place: an arc this far outside the cast circle.
+TURN_GAP = 2
+TURN_HEAD = 1.8
+TURN_WIDTH = 0.5
 LEADER_WIDTH = 0.25
 LEADER_GREY = 0.45
 
@@ -63,12 +75,14 @@ class Movement:
     `movers` are inked. `paths` run from where a mover was to where it is
     (or, for an exit, from its ghost to the entrance it leaves by);
     `remainders` run on to the destination of a move still open.
+    `turns` are the facings, from and to, of movers who turn in place.
     """
 
     movers: set[str] = field(default_factory=set)
     paths: dict[str, list[Point]] = field(default_factory=dict)
     remainders: dict[str, list[Point]] = field(default_factory=dict)
     ghosts: dict[str, Point] = field(default_factory=dict)
+    turns: dict[str, tuple[float, float]] = field(default_factory=dict)
 
 
 def movement(blocking: Blocking, group: StepGroup) -> Movement:
@@ -87,21 +101,71 @@ def movement(blocking: Blocking, group: StepGroup) -> Movement:
         if was is None and now is not None:
             enter = enters.get(entity)
             if enter is not None and enter.from_ and not rides_after:
-                result.paths[entity] = [blocking.resolve(Place(enter.from_)), now]
+                result.paths[entity] = _route(
+                    blocking, group, entity, blocking.resolve(Place(enter.from_)), now
+                )
         elif was is not None and now is None:
-            if not rides_before:
+            # A struck prop is simply gone; only cast leave a ghost.
+            if not rides_before and isinstance(blocking.entities[entity], Cast):
                 result.ghosts[entity] = was
                 exit_ = exits.get(entity) or exits.get("all")
                 if exit_ is not None and exit_.via:
-                    result.paths[entity] = [was, blocking.resolve(Place(exit_.via))]
+                    result.paths[entity] = _route(
+                        blocking, group, entity, was, blocking.resolve(Place(exit_.via))
+                    )
         elif was is not None and now is not None:
             if not (rides_before and rides_after) and was.distance(now) > 1e-9:
-                result.paths[entity] = [was, now]
+                result.paths[entity] = _route(blocking, group, entity, was, now)
+            else:
+                start = plans.facing_angle(blocking, before, entity, was)
+                end = plans.facing_angle(blocking, after, entity, now)
+                if start is not None and end is not None and turn(start, end):
+                    result.turns[entity] = (start, end)
         whereabouts = after.whereabouts(entity)
         if isinstance(whereabouts, Moving) and now is not None:
             destination = blocking.resolve(whereabouts.move.destination)
             result.remainders[entity] = [now, destination]
     return result
+
+
+def turn(start: float, end: float) -> float:
+    """The angle swept turning from one facing to another, clockwise
+    positive. A turn never sweeps past facing upstage, back to the
+    audience, so it can be the long way round.
+    """
+    sweep = (end - start) % math.tau
+    if sweep < 1e-9 or math.tau - sweep < 1e-9:
+        return 0
+    upstage = -start % math.tau
+    if upstage < 1e-9 or abs(upstage - sweep) < 1e-9:
+        # From or to upstage: the short way.
+        return sweep if sweep <= math.pi else sweep - math.tau
+    return sweep - math.tau if upstage < sweep else sweep
+
+
+def _route(
+    blocking: Blocking, group: StepGroup, entity: str, start: Point, end: Point
+) -> list[Point]:
+    """A mover's path from start to end through a `MOVE`'s `via` points
+    and where it stands after each step of the group but the last, so a
+    `VIA` in the same group bends it too.
+    """
+    route = [start]
+
+    def add(point: Point | None) -> None:
+        if point is not None and point.distance(route[-1]) > 1e-9:
+            route.append(point)
+
+    for index, step in enumerate(group.steps):
+        for directive in step.directives:
+            if isinstance(directive, Move) and directive.subject == entity:
+                for location in directive.via:
+                    add(blocking.resolve(location))
+        if index < len(group.steps) - 1:
+            add(blocking.point_in(step.state, entity, step.cue))
+    if end.distance(route[-1]) > 1e-9 or len(route) == 1:
+        route.append(end)
+    return route
 
 
 # Drawing
@@ -147,16 +211,59 @@ def _arrow(
         path.lineTo(*point)
     canvas.drawPath(path, stroke=1, fill=0)
     canvas.setDash()
-    angle = math.atan2(tip[1] - ya, tip[0] - xa)
+    _head(canvas, tip, math.atan2(tip[1] - ya, tip[0] - xa), ARROW_HEAD)
+    canvas.restoreState()
+
+
+def _head(canvas: Canvas, tip: tuple[float, float], angle: float, size: float) -> None:
+    """A filled arrowhead pointing along `angle`, in the current fill."""
     head = canvas.beginPath()
     head.moveTo(*tip)
     for side in (-0.45, 0.45):
         head.lineTo(
-            tip[0] - ARROW_HEAD * math.cos(angle + side),
-            tip[1] - ARROW_HEAD * math.sin(angle + side),
+            tip[0] - size * math.cos(angle + side),
+            tip[1] - size * math.sin(angle + side),
         )
     head.close()
     canvas.drawPath(head, stroke=0, fill=1)
+
+
+def _turn(
+    canvas: Canvas, centre: tuple[float, float], start: float, end: float
+) -> None:
+    """An arc around a cast circle from one facing to another, the way
+    `turn` sweeps, its arrowhead stopping just short of the new facing tick.
+    """
+    radius = plans.CAST_RADIUS + TURN_GAP
+    sweep = turn(start, end)
+    stop = math.copysign(0.8 / radius, sweep)
+    if abs(sweep - stop) * radius <= TURN_HEAD + 0.5:
+        return
+    steps = max(2, math.ceil(abs(sweep) / (math.pi / 24)))
+    x, y = centre
+
+    def at(bearing: float) -> tuple[float, float]:
+        return (x + radius * math.sin(bearing), y + radius * math.cos(bearing))
+
+    points = [at(start + (sweep - stop) * i / steps) for i in range(steps + 1)]
+    canvas.saveState()
+    canvas.setStrokeGray(plans.INK)
+    canvas.setFillGray(plans.INK)
+    canvas.setLineWidth(TURN_WIDTH)
+    path = canvas.beginPath()
+    path.moveTo(*points[0])
+    for point in points[1:]:
+        path.lineTo(*point)
+    canvas.drawPath(path, stroke=1, fill=0)
+    # The tangent at the tip, in canvas angles: bearings run clockwise
+    # from +y, canvas angles counterclockwise from +x.
+    bearing = start + sweep - stop
+    _head(
+        canvas,
+        points[-1],
+        math.pi / 2 - bearing - math.copysign(math.pi / 2, sweep),
+        TURN_HEAD,
+    )
     canvas.restoreState()
 
 
@@ -200,6 +307,9 @@ def draw_margin_plan(
                 REMAINDER_GREY,
                 0.6,
             )
+        for entity, (start, end) in moved.turns.items():
+            if entity in drawn:
+                _turn(canvas, drawn[entity], start, end)
 
     plans.draw_plan(
         canvas,
@@ -216,6 +326,28 @@ def draw_margin_plan(
         labels=False,
     )
     _draw_label(canvas, label, 1.5, MARGIN_PLAN_HEIGHT - NUMBER_FONT_SIZE - 1)
+
+
+def draw_margin_note(canvas: Canvas, note: MarginNote, label: str) -> None:
+    """Draws a note at the origin: a box with its marker (e.g. `*`, or
+    `▸*` when carried) and the cast member's initials on the first line,
+    and the note in italic below.
+    """
+    height = note.height
+    canvas.saveState()
+    canvas.setStrokeGray(plans.INK)
+    canvas.setLineWidth(0.5)
+    canvas.rect(0, 0, MARGIN_PLAN_WIDTH, height)
+    baseline = height - NOTE_PAD - NUMBER_FONT_SIZE
+    _draw_label(canvas, label, NOTE_PAD, baseline)
+    canvas.setFillGray(plans.INK)
+    canvas.setFont(plans.BOLD, NUMBER_FONT_SIZE)
+    canvas.drawString(NOTE_PAD + label_width(label) + 2, baseline, note.cast)
+    canvas.setFont(plans.ITALIC, NOTE_FONT_SIZE)
+    for line in note.lines:
+        baseline -= NOTE_LEADING
+        canvas.drawString(NOTE_PAD, baseline, line)
+    canvas.restoreState()
 
 
 def _draw_label(canvas: Canvas, label: str, x: float, y: float) -> None:
@@ -261,6 +393,51 @@ class MarginPlan:
     group: StepGroup
     numbers: dict[str, int]
 
+    @property
+    def cue(self) -> Cue:
+        return self.group.cue
+
+    @property
+    def scene(self) -> Scene:
+        return self.group.scene
+
+    @property
+    def label(self) -> str:
+        return str(self.number)
+
+    @property
+    def height(self) -> float:
+        return MARGIN_PLAN_HEIGHT
+
+
+@dataclass(frozen=True)
+class MarginNote:
+    """A `NOTE` for a cast member: their initials and the note."""
+
+    id: str
+    cue: Cue
+    scene: Scene
+    cast: str
+    text: str
+
+    @property
+    def label(self) -> str:
+        return NOTE_LABEL
+
+    @property
+    def lines(self) -> list[str]:
+        return simpleSplit(
+            self.text, plans.ITALIC, NOTE_FONT_SIZE, MARGIN_PLAN_WIDTH - 2 * NOTE_PAD
+        )
+
+    @property
+    def height(self) -> float:
+        return NOTE_PAD * 2 + NUMBER_FONT_SIZE + 1 + len(self.lines) * NOTE_LEADING
+
+
+# What goes in the margin: plans and notes.
+type MarginItem = MarginPlan | MarginNote
+
 
 def margin_plans(blocking: Blocking) -> list[MarginPlan]:
     """Every margin plan, in script order, numbered from 1 in each scene."""
@@ -274,6 +451,35 @@ def margin_plans(blocking: Blocking) -> list[MarginPlan]:
         counts[scene] = counts.get(scene, 0) + 1
         result.append(MarginPlan(f"p{len(result)}", counts[scene], group, keys[scene]))
     return result
+
+
+def margin_notes(blocking: Blocking) -> list[MarginNote]:
+    """Every scene's `NOTE`s, in script order."""
+    result: list[MarginNote] = []
+    for scene in blocking.scenes:
+        for step in scene.steps:
+            for directive in step.directives:
+                if isinstance(directive, NoteDirective):
+                    cast = blocking.entities[directive.subject]
+                    assert isinstance(cast, Cast)
+                    result.append(
+                        MarginNote(
+                            f"n{len(result)}",
+                            directive.cue,
+                            scene,
+                            plans.initials(cast),
+                            directive.note,
+                        )
+                    )
+    return result
+
+
+def margin_items(blocking: Blocking) -> list[MarginItem]:
+    """The margin plans and notes in script order, a plan before a note at
+    the same cue.
+    """
+    items: list[MarginItem] = [*margin_plans(blocking), *margin_notes(blocking)]
+    return sorted(items, key=lambda item: (item.cue, isinstance(item, MarginNote)))
 
 
 # Where cues go in the text
@@ -310,7 +516,7 @@ def html_with_cues(
     """
     html: list[str] = []
     rest, done = text, 0
-    for offset, plan_id in sorted(cues):
+    for offset, plan_id in sorted(cues, key=lambda cue: cue[0]):
         head, rest = split_rich(rest, offset - done)
         done = offset
         html.append(head.to_inline_html() if html or inline else head.to_html())
@@ -336,7 +542,7 @@ class Cues:
     end: dict[int, list[str]] = field(default_factory=dict)
 
     @classmethod
-    def place(cls, blocking: Blocking, margin: list[MarginPlan]) -> Cues:
+    def place(cls, blocking: Blocking, margin: Sequence[MarginItem]) -> Cues:
         cues = cls()
         paragraphs = blocking.screenplay.paragraphs
         index_of = {id(para): index for index, para in enumerate(paragraphs)}
@@ -345,12 +551,12 @@ class Cues:
             return not isinstance(paragraphs[index], (Note, PageBreak))
 
         for plan in margin:
-            cue = plan.group.cue
+            cue = plan.cue
             if cue.part >= 0:
                 key = (cue.paragraph, cue.side, cue.part)
                 cues.inline.setdefault(key, []).append((cue.offset, plan.id))
                 continue
-            boundary = index_of[id(plan.group.scene.boundary)]
+            boundary = index_of[id(plan.scene.boundary)]
             previous = next(
                 (
                     index
@@ -411,11 +617,11 @@ class PageLayout:
     plan markers by baseline; and the plans carried to the next page.
     """
 
-    plans: list[tuple[MarginPlan, float, str, float | None]] = field(
+    plans: list[tuple[MarginItem, float, str, float | None]] = field(
         default_factory=list
     )
     markers: dict[float, list[str]] = field(default_factory=dict)
-    carry: list[MarginPlan] = field(default_factory=list)
+    carry: list[MarginItem] = field(default_factory=list)
 
 
 class FlushMargin(Flowable):
@@ -446,7 +652,7 @@ class FlushMargin(Flowable):
 class Placed:
     """A cue as drawn: its page, line baseline and plan."""
 
-    plan: MarginPlan
+    plan: MarginItem
     page: int
     x: float
     y: float
@@ -462,7 +668,7 @@ class MarginLayout:
     def __init__(
         self,
         blocking: Blocking,
-        margin: list[MarginPlan],
+        margin: Sequence[MarginItem],
         text_right: float,
         top: float,
         bottom: float,
@@ -473,7 +679,7 @@ class MarginLayout:
         self.top = top
         self.bottom = bottom
         self.page: list[Placed] = []
-        self.carried: list[MarginPlan] = []
+        self.carried: list[MarginItem] = []
         self.drawn: set[str] = set()
 
     @property
@@ -489,7 +695,13 @@ class MarginLayout:
             def begin_page(
                 canvas: Canvas, doc: BaseDocTemplate, on_page: object = on_page
             ) -> None:
-                setattr(canvas, CUE_CALLBACK, self.record)
+                # ReportLab 5 looks callbacks up with getNamedCB; 4 uses
+                # canvas attributes.
+                set_named_cb = getattr(canvas, "setNamedCB", None)
+                if set_named_cb is not None:
+                    set_named_cb(CUE_CALLBACK, self.record)
+                else:
+                    setattr(canvas, CUE_CALLBACK, self.record)
                 on_page(canvas, doc)  # ty: ignore[call-non-callable]
 
             template.onPage = begin_page
@@ -528,24 +740,24 @@ class MarginLayout:
         result = PageLayout()
         next_top = self.top
         for plan in self.carried:
-            fits = next_top - MARGIN_PLAN_HEIGHT >= self.bottom
+            fits = next_top - plan.height >= self.bottom
             # A page takes at least one carried plan, so carrying ends.
             if result.carry or not (fits or next_top == self.top):
                 result.carry.append(plan)
                 continue
-            result.plans.append((plan, next_top, f"▸{plan.number}", None))
-            next_top -= MARGIN_PLAN_HEIGHT + STACK_GAP
+            result.plans.append((plan, next_top, f"▸{plan.label}", None))
+            next_top -= plan.height + STACK_GAP
         for placed in sorted(self.page, key=lambda placed: -placed.y):
             line_top = placed.y + MARKER_FONT_SIZE
             top = min(line_top, next_top)
-            label = str(placed.plan.number)
-            if result.carry or top - MARGIN_PLAN_HEIGHT < self.bottom:
+            label = placed.plan.label
+            if result.carry or top - placed.plan.height < self.bottom:
                 result.carry.append(placed.plan)
                 label += "▸"
             else:
                 leader = placed.y if top < line_top - 0.5 else None
                 result.plans.append((placed.plan, top, label, leader))
-                next_top = top - MARGIN_PLAN_HEIGHT - STACK_GAP
+                next_top = top - placed.plan.height - STACK_GAP
             result.markers.setdefault(round(placed.y, 1), []).append(label)
         return result
 
@@ -563,12 +775,15 @@ class MarginLayout:
         self.carried = page.carry
 
     def _draw_plan(
-        self, canvas: Canvas, plan: MarginPlan, top: float, label: str
+        self, canvas: Canvas, plan: MarginItem, top: float, label: str
     ) -> None:
         self.drawn.add(plan.id)
         canvas.saveState()
-        canvas.translate(self.plan_x, top - MARGIN_PLAN_HEIGHT)
-        draw_margin_plan(canvas, self.blocking, plan.group, plan.numbers, label)
+        canvas.translate(self.plan_x, top - plan.height)
+        if isinstance(plan, MarginNote):
+            draw_margin_note(canvas, plan, label)
+        else:
+            draw_margin_plan(canvas, self.blocking, plan.group, plan.numbers, label)
         canvas.restoreState()
 
     def _leader(self, canvas: Canvas, y: float, top: float) -> None:

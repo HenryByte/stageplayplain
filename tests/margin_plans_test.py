@@ -3,6 +3,7 @@ stacking down the margin.
 """
 
 import io
+import math
 from pathlib import Path
 
 import pytest
@@ -17,10 +18,13 @@ from screenplain.export.margin_plans import (
     STACK_GAP,
     Cues,
     MarginLayout,
+    MarginNote,
     MarginPlan,
     Placed,
     html_with_cues,
+    margin_items,
     movement,
+    turn,
 )
 from screenplain.export.margin_plans import (
     margin_plans as all_margin_plans,
@@ -104,6 +108,87 @@ def test_open_move_events(parlour: fse.Blocking) -> None:
     assert {} == arrive.remainders
 
 
+def test_a_turn_in_place_inks_the_turner_with_no_path() -> None:
+    blocking = process(
+        "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+        "[[FSE ENTITY sam type=cast]]\n"
+        "[[FSE ENTITY alex type=cast]]\n\n"
+        "INT. BATHROOM\n\n"
+        "[[FSE PRESET sam pos=0,0 facing=180; PRESET alex pos=2,2]]\n\n"
+        "Sam waits.\n\n"
+        "[[FSE SET sam facing=alex]]\n\n"
+        "Sam turns.\n"
+    )
+    turned = movement(blocking, group_with(blocking, "SET sam facing=alex"))
+    assert {"sam"} == turned.movers
+    assert {} == turned.paths
+    assert {"sam": (pytest.approx(math.pi), pytest.approx(math.pi / 4))} == (
+        turned.turns
+    )
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "sweep"),
+    [
+        (90, 180, 90),  # The short way: never past upstage.
+        (270, 200, -70),
+        (300, 60, -240),  # The short way would pass upstage.
+        (60, 300, 240),
+        (0, 90, 90),  # From upstage, the short way.
+        (90, 0, -90),
+        (90, 270, 180),
+        (270, 90, -180),
+        (45, 45, 0),
+    ],
+)
+def test_a_turn_never_sweeps_past_upstage(start: int, end: int, sweep: int) -> None:
+    assert pytest.approx(math.radians(sweep)) == turn(
+        math.radians(start), math.radians(end)
+    )
+
+
+def test_a_cross_has_no_turn(parlour: fse.Blocking) -> None:
+    arrive = movement(parlour, group_with(parlour, "ARRIVE mary facing=dsc"))
+    assert {} == arrive.turns
+
+
+def test_a_via_in_the_same_group_bends_the_path() -> None:
+    blocking = process(
+        "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+        "[[FSE ENTITY sam type=cast]]\n"
+        "[[FSE ENTITY mirror type=mark pos=3,3]]\n\n"
+        "INT. BATHROOM\n\n"
+        "[[FSE PRESET sam pos=0,0]]\n\n"
+        "Sam waits.\n\n"
+        "[[FSE MOVE sam pos=mirror until=arrive]]\n"
+        "[[FSE VIA sam pos=0,1]]\n"
+        "[[FSE ARRIVE sam]]\n\n"
+        "She goes to the mirror.\n"
+    )
+    moved = movement(blocking, group_with(blocking, "VIA sam pos=0,1"))
+    assert [Point(0, 0), Point(0, 1), Point(3, 3)] == moved.paths["sam"]
+
+
+def test_a_move_runs_through_its_via_points() -> None:
+    blocking = process(
+        "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+        "[[FSE ENTITY sam type=cast]]\n"
+        "[[FSE ENTITY door type=entrance pos=5,0]]\n"
+        "[[FSE ENTITY mirror type=mark pos=3,3]]\n\n"
+        "INT. BATHROOM\n\n"
+        "[[FSE PRESET sam pos=0,0]]\n\n"
+        "Sam waits.\n\n"
+        "[[FSE MOVE sam pos=mirror via=0,1]]\n\n"
+        "She goes to the mirror.\n\n"
+        "[[FSE MOVE sam pos=0,0 via=-1,2|door]]\n\n"
+        "And back.\n"
+    )
+    there = movement(blocking, group_with(blocking, "MOVE sam pos=mirror via=0,1"))
+    assert [Point(0, 0), Point(0, 1), Point(3, 3)] == there.paths["sam"]
+    back = movement(blocking, group_with(blocking, "MOVE sam pos=0,0 via=-1,2|door"))
+    assert [Point(3, 3), Point(-1, 2), Point(5, 0), Point(0, 0)] == back.paths["sam"]
+
+
 def test_others_in_transit_are_grey_with_no_path(parlour: fse.Blocking) -> None:
     group = group_with(parlour, "MOVE arthur pos=1.4,0.2")
     moved = movement(parlour, group)
@@ -146,6 +231,49 @@ def test_movers_in_ink_and_the_rest_grey(parlour: fse.Blocking) -> None:
     heads = [s for s in canvas.drawn("path") if s.filled and s.fill == plans.INK]
     assert 1 == len(paths)
     assert 1 == len(heads)
+
+
+def test_a_struck_prop_leaves_no_ghost() -> None:
+    blocking = process(
+        "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+        "[[FSE ENTITY alex type=cast]]\n"
+        "[[FSE ENTITY shirt type=prop]]\n\n"
+        "INT. FLAT\n\n"
+        "[[FSE PRESET alex pos=0,0; PRESET shirt pos=1,0]]\n\n"
+        "Alex waits.\n\n"
+        "[[FSE STRIKE shirt by=alex]]\n\n"
+        "He puts the shirt on.\n"
+    )
+    struck = movement(blocking, group_with(blocking, "STRIKE shirt by=alex"))
+    assert {} == struck.ghosts
+    assert set() == struck.movers
+
+
+def test_notes_go_in_the_margin_after_a_plan_at_the_same_cue() -> None:
+    blocking = process(
+        "[[FSE STAGE type=proscenium width=10 depth=8]]\n"
+        "[[FSE ENTITY sam type=cast]]\n\n"
+        "INT. BATHROOM\n\n"
+        "[[FSE PRESET sam pos=0,0]]\n\n"
+        "Sam waits.\n\n"
+        '[[FSE MOVE sam pos=-4,0; NOTE sam text="Longing in his eye"]]\n\n'
+        "He goes to the mirror.\n\n"
+        '[[FSE NOTE sam text="Still"]]\n\n'
+        "He stares.\n"
+    )
+    items = margin_items(blocking)
+    assert ["1", "*", "*"] == [item.label for item in items]
+    note = items[1]
+    assert isinstance(note, MarginNote)
+    assert ("SA", "Longing in his eye") == (note.cast, note.text)
+
+
+def test_a_long_note_wraps_and_grows() -> None:
+    short = MarginNote("n0", None, None, "SA", "Still")  # ty: ignore[invalid-argument-type]
+    long = MarginNote("n1", None, None, "SA", "Looks at the mirror " * 6)  # ty: ignore[invalid-argument-type]
+    assert 1 == len(short.lines)
+    assert len(long.lines) > 2
+    assert long.height > short.height
 
 
 def test_exit_ghosts_are_dashed(parlour: fse.Blocking) -> None:
@@ -244,8 +372,8 @@ def test_a_plan_sits_level_with_its_cue(hamlet: fse.Blocking) -> None:
     layout.cue(1, 600)
     page = layout.layout()
     ((plan, top, label, leader),) = page.plans
-    assert (1, 600 + margin_plans.MARKER_FONT_SIZE, "1", None) == (
-        plan.number,
+    assert ("1", 600 + margin_plans.MARKER_FONT_SIZE, "1", None) == (
+        plan.label,
         top,
         label,
         leader,
@@ -274,8 +402,8 @@ def test_overflow_carries_to_the_next_page(hamlet: fse.Blocking) -> None:
     layout.cue(1, 150)
     layout.cue(2, 140)
     page = layout.layout()
-    assert [1] == [plan.number for plan, *_ in page.plans]
-    assert [2] == [plan.number for plan in page.carry]
+    assert ["1"] == [plan.label for plan, *_ in page.plans]
+    assert ["2"] == [plan.label for plan in page.carry]
     assert {150: ["1"], 140: ["2▸"]} == page.markers
     # Next page: the carried plan goes first, at the top.
     layout.carried, layout.page = page.carry, []

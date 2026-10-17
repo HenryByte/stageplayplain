@@ -1,0 +1,9 @@
+/* expect: 9: error: E05 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+[[FSE ENTITY skull type=prop]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=skull]]

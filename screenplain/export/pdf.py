@@ -32,10 +32,10 @@ from screenplain.export.margin_plans import (
     Cues,
     CueSpacer,
     FlushMargin,
+    MarginItem,
     MarginLayout,
-    MarginPlan,
     html_with_cues,
-    margin_plans,
+    margin_items,
 )
 from screenplain.fse import Blocking
 from screenplain.richstring import RichString
@@ -690,12 +690,12 @@ def to_pdf(
     """
     settings = settings or create_default_settings()
     scene_plans = {}
-    margin: list[MarginPlan] = []
+    margin: list[MarginItem] = []
     cues = None
     if blocking is not None:
         settings = with_blocking_margins(settings)
         scene_plans = plans.scene_plans(blocking)
-        margin = margin_plans(blocking)
+        margin = margin_items(blocking)
         cues = Cues.place(blocking, margin)
     story = get_title_page_story(screenplay, settings)
     has_title_page = bool(story)

@@ -1,0 +1,11 @@
+/* expect: 11: error: E04 */
+
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+[[FSE ENTITY alex type=cast pos=2,2]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=3,0 until=arrive]]
+
+[[FSE VIA sam pos=alex]]
