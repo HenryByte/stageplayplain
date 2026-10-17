@@ -119,7 +119,15 @@ A step that changes the stage picture: some cast member's or prop's whereabouts,
 _Avoid_: movement step
 
 **Margin plan**:
-The plan beside the script for one step group that holds at least one picture change, tied to its cue by a marker. Steps at the top of a scene never get one: the scene plan shows them. It is a drawing only, with no key. Margin plans stack in script order down the margin; the script text never moves to make room.
+The plan beside the script for one step group that holds at least one picture change, tied to its cue by a plan marker. Steps at the top of a scene never get one: the scene plan shows them. It is a drawing only, with no key. It shows the whole stage after the group, with the group's movers in ink and everything else in grey, and a path from where each mover was. Margin plans stack in script order down the margin, each starting level with its cue or below the plan above, never above its cue; one that would run off the page carries to the top of the next page's margin. The script text never moves to make room.
+
+**Plan marker**:
+The number tying a margin plan to its cue: shown in the margin level with the cue's line and again on the plan. Numbers restart in each scene; the scene plan has none. Cues sharing a line share one label, numbers in script order. A plan carried to the next page is marked as such at both ends.
+_Avoid_: marker (unqualified: the `FSE` marker begins an FSE note), plan number
+
+**Huddle**:
+One rounded label on a plan standing in for entities drawn on top of each other: a cast member or prop with everything whose drawn centre is within one cast-circle radius of it, plus every prop `on` or `with` any of them. It lists cast initials, then prop numbers, each in ink or grey as it would be drawn alone, and shows no facing. A huddle never grows by chaining from one neighbour to the next; symbols that overlap without huddling are drawn where they are, the inked one on top.
+_Avoid_: cluster, pill, group
 
 **Front matter**:
 In a stage play, everything before the first page break (cast list, setting, notes): not part of the performance. Under blocking output it may hold no FSE note, declarations included, since it has no scenes to draw plans in.
