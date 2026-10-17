@@ -20,6 +20,7 @@ KEYWORDS = frozenset(
         "SET",
         "STRIKE",
         "PRESET",
+        "NOTE",
     )
 )
 

@@ -1,0 +1,21 @@
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY door type=entrance pos=5,0]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+[[FSE ENTITY alex type=cast pos=-3,0]]
+[[FSE ENTITY jo type=cast]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=alex facing=alex]]
+
+She goes to him.
+
+[[FSE MOVE sam pos=alex until=arrive]]
+
+She's already there.
+
+[[FSE ARRIVE sam]]
+
+[[FSE ENTER jo from=door pos=alex]]
+
+Jo comes in, straight to Alex.

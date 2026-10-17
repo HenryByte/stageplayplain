@@ -28,6 +28,7 @@ from screenplain.fse.model import (
     At,
     Bearing,
     Cast,
+    Cue,
     Entrance,
     Mark,
     Moving,
@@ -46,6 +47,7 @@ SCENE_PLAN_PAD = 6
 
 FONT = "Helvetica"
 BOLD = "Helvetica-Bold"
+ITALIC = "Helvetica-Oblique"
 # Initials and prop numbers are this size whatever the size of the plan.
 SYMBOL_FONT_SIZE = 4
 LABEL_FONT_SIZE = 4.5
@@ -67,6 +69,9 @@ GREY = 0.68
 MARK_GREY = 0.5
 LABEL_GREY = 0.45
 STAGE_FILL = 0.94
+GHOST_GREY = 0.35
+GHOST_LABEL_GREY = 0.5
+GHOST_DASH = (1, 1)
 
 KEY_FONT_SIZE = 7
 KEY_LEADING = 3.4 * mm
@@ -186,13 +191,18 @@ class Geometry:
         width: float,
         height: float,
         pad: float,
+        audience: bool = True,
     ) -> Geometry:
+        """Fits the stage and its entrances into a box, leaving room for
+        the audience label when there is one.
+        """
         half_x, half_y = half_extents(stage)
         xs = [-half_x, half_x, *(point.x for point in entrances)]
         ys = [-half_y, half_y, *(point.y for point in entrances)]
         min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
-        bottom = pad + (AUDIENCE_BAND if audience_sides(stage) else 0)
-        top = pad + (AUDIENCE_BAND if len(audience_sides(stage)) > 1 else 0)
+        sides = audience_sides(stage) if audience else []
+        bottom = pad + (AUDIENCE_BAND if sides else 0)
+        top = pad + (AUDIENCE_BAND if len(sides) > 1 else 0)
         inner_width, inner_height = width - 2 * pad, height - bottom - top
         scale = min(inner_width / (max_x - min_x), inner_height / (max_y - min_y))
         return cls(
@@ -243,6 +253,8 @@ class Symbol:
     facing: float | None = None
     # The entity it is `on` or `with`, if any.
     carrier: str | None = None
+    # Where an exiting entity stood: drawn dashed, never inked.
+    ghost: bool = False
 
 
 @dataclass
@@ -262,6 +274,10 @@ class Huddle:
     @property
     def ink(self) -> bool:
         return any(member.ink for member in self.members)
+
+    @property
+    def ghost(self) -> bool:
+        return any(member.ghost for member in self.members)
 
     @property
     def is_cast(self) -> bool:
@@ -307,7 +323,7 @@ def crowd(symbols: list[Symbol], cap: float = CAST_RADIUS) -> list[Symbol | Hudd
 
     candidates = sorted(
         (symbol for symbol in symbols if not is_rider(symbol)),
-        key=lambda symbol: (not symbol.is_cast, not symbol.ink),
+        key=lambda symbol: (not symbol.is_cast, not symbol.ink, symbol.ghost),
     )
     groups: list[list[Symbol]] = []
     home: dict[str, list[Symbol]] = {}
@@ -330,14 +346,20 @@ def plan_symbols(
     numbers: dict[str, int],
     geometry: Geometry,
     ink: Callable[[str], bool],
+    cue: Cue | None = None,
 ) -> list[Symbol]:
-    """A symbol for every onstage cast member and prop, props first."""
+    """A symbol for every onstage cast member and prop, props first. With
+    a cue, entities in transit are placed where they are at that cue.
+    """
     symbols: list[Symbol] = []
     entities = [e for e in blocking.entities.values() if isinstance(e, Prop)] + [
         e for e in blocking.entities.values() if isinstance(e, Cast)
     ]
     for entity in entities:
-        point = floor_point(blocking, state, entity.id)
+        if cue is None:
+            point = floor_point(blocking, state, entity.id)
+        else:
+            point = blocking.point_in(state, entity.id, cue)
         if point is None:
             continue
         is_cast = isinstance(entity, Cast)
@@ -369,38 +391,96 @@ def draw_plan(
     height: float,
     pad: float,
     ink: Callable[[str], bool] = lambda entity: True,
+    *,
+    cue: Cue | None = None,
+    ghosts: dict[str, Point] | None = None,
+    paths: PathDrawer | None = None,
+    labels: bool = True,
 ) -> None:
     """Draws the stage in a state into a `width` by `height` box at the
     origin. `numbers` gives each prop its number from the scene's key;
     `ink` says which entities are drawn in ink rather than grey.
+
+    For a margin plan: `cue` places entities in transit, `ghosts` marks
+    where exiting entities stood, and `paths` draws movement above grey
+    symbols and below inked ones. `labels` names the audience side, marks
+    and entrances.
     """
     stage = blocking.stage
     assert stage is not None
     entrances = [e for e in blocking.entities.values() if isinstance(e, Entrance)]
     marks = [e for e in blocking.entities.values() if isinstance(e, Mark)]
     geometry = Geometry.fit(
-        stage, [entrance.point for entrance in entrances], width, height, pad
+        stage, [entrance.point for entrance in entrances], width, height, pad, labels
     )
     canvas.saveState()
     canvas.setStrokeGray(INK)
     canvas.setLineWidth(0.5)
     canvas.rect(0, 0, width, height)
     _draw_stage(canvas, geometry)
-    _draw_audience(canvas, geometry, width)
+    if labels:
+        _draw_audience(canvas, geometry, width)
     for mark in marks:
-        _draw_mark(canvas, geometry, mark)
+        _draw_mark(canvas, geometry, mark, labels)
     for entrance in entrances:
-        _draw_entrance(canvas, geometry, entrance)
-    items = crowd(plan_symbols(blocking, state, numbers, geometry, ink))
-    # Grey props, grey cast, then inked symbols on top.
-    for item in sorted(items, key=lambda item: (item.ink, item.is_cast)):
-        if isinstance(item, Huddle):
-            _draw_huddle(canvas, item)
-        elif item.is_cast:
-            _draw_cast(canvas, item)
-        else:
-            _draw_prop(canvas, item)
+        _draw_entrance(canvas, geometry, entrance, labels)
+    symbols = plan_symbols(blocking, state, numbers, geometry, ink, cue)
+    for entity, point in (ghosts or {}).items():
+        target = blocking.entities[entity]
+        assert isinstance(target, (Cast, Prop))
+        symbols.append(
+            Symbol(
+                entity,
+                isinstance(target, Cast),
+                initials(target) if isinstance(target, Cast) else str(numbers[entity]),
+                geometry(point),
+                ink=False,
+                ghost=True,
+            )
+        )
+    items = crowd(symbols)
+
+    def layer(item: Symbol | Huddle) -> int:
+        return 2 if item.ink else 1 if item.ghost else 0
+
+    # Grey props, grey cast, paths, ghosts, then inked symbols on top.
+    ordered = sorted(items, key=lambda item: (layer(item), item.is_cast))
+    for item in [item for item in ordered if layer(item) == 0]:
+        _draw_item(canvas, item)
+    if paths is not None:
+        drawn = {
+            member.entity: item.at
+            for item in items
+            for member in (item.members if isinstance(item, Huddle) else [item])
+            if not member.ghost
+        }
+        ghosted = {
+            member.entity: item.at
+            for item in items
+            for member in (item.members if isinstance(item, Huddle) else [item])
+            if member.ghost
+        }
+        paths(canvas, geometry, drawn, ghosted)
+    for item in [item for item in ordered if layer(item) > 0]:
+        _draw_item(canvas, item)
     canvas.restoreState()
+
+
+# Draws movement onto a plan, given its geometry and where each entity's
+# symbol (or huddle) and each ghost is drawn.
+type PathDrawer = Callable[
+    [Canvas, Geometry, dict[str, tuple[float, float]], dict[str, tuple[float, float]]],
+    None,
+]
+
+
+def _draw_item(canvas: Canvas, item: Symbol | Huddle) -> None:
+    if isinstance(item, Huddle):
+        _draw_huddle(canvas, item)
+    elif item.is_cast:
+        _draw_cast(canvas, item)
+    else:
+        _draw_prop(canvas, item)
 
 
 def _draw_stage(canvas: Canvas, geometry: Geometry) -> None:
@@ -438,18 +518,22 @@ def _draw_audience(canvas: Canvas, geometry: Geometry, width: float) -> None:
         canvas.drawCentredString(width / 2, y, text)
 
 
-def _draw_mark(canvas: Canvas, geometry: Geometry, mark: Mark) -> None:
+def _draw_mark(canvas: Canvas, geometry: Geometry, mark: Mark, label: bool) -> None:
     x, y = geometry(mark.point)
     canvas.setStrokeGray(MARK_GREY)
     canvas.setLineWidth(0.4)
     canvas.line(x - MARK_HALF, y - MARK_HALF, x + MARK_HALF, y + MARK_HALF)
     canvas.line(x - MARK_HALF, y + MARK_HALF, x + MARK_HALF, y - MARK_HALF)
+    if not label:
+        return
     canvas.setFillGray(MARK_GREY)
     canvas.setFont(FONT, LABEL_FONT_SIZE)
     canvas.drawString(x + 2, y - 4, mark.id)
 
 
-def _draw_entrance(canvas: Canvas, geometry: Geometry, entrance: Entrance) -> None:
+def _draw_entrance(
+    canvas: Canvas, geometry: Geometry, entrance: Entrance, label: bool
+) -> None:
     x, y = geometry(entrance.point)
     canvas.setFillGray(1)
     canvas.setStrokeGray(INK)
@@ -460,6 +544,8 @@ def _draw_entrance(canvas: Canvas, geometry: Geometry, entrance: Entrance) -> No
     path.lineTo(x, y + ENTRANCE_HALF * 0.8)
     path.close()
     canvas.drawPath(path, fill=1)
+    if not label:
+        return
     # The id goes on the side towards the middle of the stage.
     canvas.setFillGray(INK)
     canvas.setFont(FONT, LABEL_FONT_SIZE)
@@ -475,23 +561,30 @@ def _gray(ink: bool) -> float:
     return INK if ink else GREY
 
 
+def _symbol_gray(symbol: Symbol) -> float:
+    return GHOST_GREY if symbol.ghost else _gray(symbol.ink)
+
+
 def _draw_cast(canvas: Canvas, symbol: Symbol) -> None:
     x, y = symbol.at
     canvas.setStrokeGray(1)
     canvas.setLineWidth(HALO_WIDTH)
     canvas.circle(x, y, CAST_RADIUS)
-    canvas.setStrokeGray(_gray(symbol.ink))
+    canvas.setStrokeGray(_symbol_gray(symbol))
     canvas.setFillGray(1)
-    canvas.setLineWidth(0.7)
+    canvas.setLineWidth(0.5 if symbol.ghost else 0.7)
+    if symbol.ghost:
+        canvas.setDash(*GHOST_DASH)
     canvas.circle(x, y, CAST_RADIUS, fill=1)
+    canvas.setDash()
     if symbol.facing is not None:
         dx, dy = math.sin(symbol.facing), math.cos(symbol.facing)
         tip = CAST_RADIUS + FACING_TICK
         canvas.line(
             x + CAST_RADIUS * dx, y + CAST_RADIUS * dy, x + tip * dx, y + tip * dy
         )
-    canvas.setFillGray(_gray(symbol.ink))
-    canvas.setFont(BOLD, SYMBOL_FONT_SIZE)
+    canvas.setFillGray(_symbol_gray(symbol))
+    canvas.setFont(FONT if symbol.ghost else BOLD, SYMBOL_FONT_SIZE)
     canvas.drawCentredString(x, y - SYMBOL_FONT_SIZE * 0.35, symbol.label)
 
 
@@ -501,29 +594,48 @@ def _draw_prop(canvas: Canvas, symbol: Symbol) -> None:
     canvas.setStrokeGray(1)
     canvas.setLineWidth(HALO_WIDTH)
     canvas.rect(x - PROP_HALF, y - PROP_HALF, side, side)
-    canvas.setStrokeGray(_gray(symbol.ink))
+    canvas.setStrokeGray(_symbol_gray(symbol))
     canvas.setFillGray(1)
     canvas.setLineWidth(0.5)
+    if symbol.ghost:
+        canvas.setDash(*GHOST_DASH)
     canvas.rect(x - PROP_HALF, y - PROP_HALF, side, side, fill=1)
-    canvas.setFillGray(_gray(symbol.ink))
-    canvas.setFont(BOLD, SYMBOL_FONT_SIZE)
+    canvas.setDash()
+    canvas.setFillGray(_symbol_gray(symbol))
+    canvas.setFont(FONT if symbol.ghost else BOLD, SYMBOL_FONT_SIZE)
     canvas.drawCentredString(x, y - SYMBOL_FONT_SIZE * 0.35, symbol.label)
 
 
-def huddle_runs(huddle: Huddle) -> list[tuple[str, bool]]:
-    """The pieces of a huddle's label, each with whether it is inked: the
-    cast's initials, a separator, then the props' numbers.
+@dataclass(frozen=True)
+class Run:
+    """A piece of a huddle's label."""
+
+    text: str
+    gray: float
+    font: str = BOLD
+
+
+def _member_run(member: Symbol) -> Run:
+    if member.ghost:
+        return Run(member.label, GHOST_LABEL_GREY, ITALIC)
+    return Run(member.label, _gray(member.ink))
+
+
+def huddle_runs(huddle: Huddle) -> list[Run]:
+    """The pieces of a huddle's label: the cast's initials, a separator,
+    then the props' numbers. Each is grey or ink as it would be drawn
+    alone; a ghost's is italic.
     """
-    runs = [(member.label, member.ink) for member in huddle.cast]
+    runs = [_member_run(member) for member in huddle.cast]
     if huddle.cast and huddle.props:
-        runs.append(("·", huddle.ink))
-    runs += [(member.label, member.ink) for member in huddle.props]
+        runs.append(Run("·", _gray(huddle.ink)))
+    runs += [_member_run(member) for member in huddle.props]
     return runs
 
 
 def huddle_half_width(huddle: Huddle) -> float:
     runs = huddle_runs(huddle)
-    text = sum(stringWidth(run, BOLD, SYMBOL_FONT_SIZE) for run, _ in runs)
+    text = sum(stringWidth(run.text, run.font, SYMBOL_FONT_SIZE) for run in runs)
     return (text + HUDDLE_GAP * (len(runs) - 1) + 3) / 2
 
 
@@ -533,16 +645,20 @@ def _draw_huddle(canvas: Canvas, huddle: Huddle) -> None:
     canvas.setStrokeGray(1)
     canvas.setLineWidth(HALO_WIDTH)
     canvas.roundRect(x - half_w, y - half_h, 2 * half_w, 2 * half_h, half_h)
-    canvas.setStrokeGray(_gray(huddle.ink))
+    all_ghosts = all(member.ghost for member in huddle.members)
+    canvas.setStrokeGray(GHOST_GREY if all_ghosts else _gray(huddle.ink))
     canvas.setFillGray(1)
     canvas.setLineWidth(0.6)
+    if all_ghosts:
+        canvas.setDash(*GHOST_DASH)
     canvas.roundRect(x - half_w, y - half_h, 2 * half_w, 2 * half_h, half_h, fill=1)
-    canvas.setFont(BOLD, SYMBOL_FONT_SIZE)
+    canvas.setDash()
     run_x = x - half_w + 1.5
-    for text, ink in huddle_runs(huddle):
-        canvas.setFillGray(_gray(ink))
-        canvas.drawString(run_x, y - SYMBOL_FONT_SIZE * 0.35, text)
-        run_x += stringWidth(text, BOLD, SYMBOL_FONT_SIZE) + HUDDLE_GAP
+    for run in huddle_runs(huddle):
+        canvas.setFillGray(run.gray)
+        canvas.setFont(run.font, SYMBOL_FONT_SIZE)
+        canvas.drawString(run_x, y - SYMBOL_FONT_SIZE * 0.35, run.text)
+        run_x += stringWidth(run.text, run.font, SYMBOL_FONT_SIZE) + HUDDLE_GAP
 
 
 class PlanDrawing(Flowable):

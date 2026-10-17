@@ -13,6 +13,7 @@ from screenplain.fse.directives import Move, Set
 from screenplain.fse.model import (
     OFFSTAGE,
     At,
+    Bearing,
     Cue,
     Moving,
     Place,
@@ -290,6 +291,128 @@ def test_segments_with_no_script_length() -> None:
         via.move.vias[-1].location for via in vias if isinstance(via, Moving)
     ]
     assert At(Point(4, 4)) == arrive.state.whereabouts("hamlet")
+
+
+# Going up to someone
+
+BESIDE = (
+    "[[FSE STAGE type=proscenium width=10 depth=8 units={units}]]\n"
+    "[[FSE ENTITY door type=entrance pos=5,0]]\n"
+    "[[FSE ENTITY sam type=cast pos=0,0]]\n"
+    "[[FSE ENTITY alex type=cast pos=-3,0]]\n"
+    "[[FSE ENTITY jo type=cast]]\n\n"
+    "INT. BATHROOM\n\n"
+)
+
+
+def where(blocking: Blocking, text: str, entity: str) -> object:
+    return step_with(blocking, text).state.whereabouts(entity)
+
+
+@pytest.mark.parametrize(
+    ("note", "entity", "point"),
+    [
+        # Short of them on the line from where the mover is.
+        ("MOVE sam pos=alex", "sam", Point(-2, 0)),
+        # From the last turning point.
+        ("MOVE sam pos=alex via=-3,3", "sam", Point(-3, 1)),
+        # From the entrance.
+        ("ENTER jo from=door pos=alex", "jo", Point(-2, 0)),
+    ],
+)
+def test_going_up_to_someone_stops_beside_them(
+    note: str, entity: str, point: Point
+) -> None:
+    blocking = process(BESIDE.format(units="m") + f"[[FSE {note}]]\n\nShe goes.\n")
+    assert not [report for report in blocking.reports if report.code != "W06"]
+    assert At(point) == where(blocking, note, entity)
+
+
+@pytest.mark.parametrize(
+    ("note", "point"),
+    [
+        ("MOVE sam pos=chair", Point(-2, 0)),
+        # A carried prop is where its carrier stands.
+        ("MOVE sam pos=skull", Point(-2, 0)),
+    ],
+)
+def test_going_up_to_a_prop_stops_beside_it(note: str, point: Point) -> None:
+    blocking = process(
+        BESIDE.format(units="m").replace(
+            "[[FSE ENTITY jo type=cast]]\n",
+            "[[FSE ENTITY chair type=prop pos=-3,0]]\n"
+            "[[FSE ENTITY skull type=prop with=alex]]\n",
+        )
+        + f"[[FSE {note}]]\n\nShe goes.\n"
+    )
+    assert At(point) == where(blocking, note, "sam")
+
+
+def test_going_up_to_something_faces_it_unless_told_otherwise() -> None:
+    blocking = process(
+        BESIDE.format(units="m").replace(
+            "[[FSE ENTITY jo type=cast]]\n",
+            "[[FSE ENTITY cupboard type=prop pos=1,3]]\n",
+        )
+        + "[[FSE SET sam facing=180]]\n\nShe looks out.\n\n"
+        + "[[FSE MOVE sam pos=cupboard]]\n\nShe goes to the cupboard.\n\n"
+        + "[[FSE MOVE sam pos=alex facing=0]]\n\nShe goes to him.\n"
+    )
+    cupboard = step_with(blocking, "MOVE sam pos=cupboard").state
+    assert Toward(Place("cupboard")) == cupboard.facing("sam")
+    told = step_with(blocking, "MOVE sam pos=alex facing=0").state
+    assert Bearing(0) == told.facing("sam")
+
+
+def test_a_prop_going_up_to_something_has_no_facing() -> None:
+    blocking = process(
+        BESIDE.format(units="m").replace(
+            "[[FSE ENTITY jo type=cast]]\n",
+            "[[FSE ENTITY chair type=prop pos=3,3]]\n",
+        )
+        + "[[FSE MOVE chair pos=alex by=crew]]\n\nIt's brought over.\n"
+    )
+    assert None is step_with(blocking, "MOVE chair pos=alex by=crew").state.facing(
+        "chair"
+    )
+
+
+def test_setting_a_prop_down_at_someone_puts_it_where_they_stand() -> None:
+    blocking = process(
+        BESIDE.format(units="m").replace(
+            "[[FSE ENTITY jo type=cast]]\n",
+            "[[FSE ENTITY bag type=prop with=alex]]\n",
+        )
+        + "[[FSE MOVE alex pos=1,2]]\n\nHe crosses.\n\n"
+        + "[[FSE SET bag pos=alex by=alex]]\n\nHe drops the bag.\n"
+    )
+    assert At(Point(1, 2)) == where(blocking, "SET bag pos=alex by=alex", "bag")
+
+
+def test_going_up_to_someone_is_in_the_stages_units() -> None:
+    blocking = process(
+        BESIDE.format(units="cm").replace("pos=-3,0", "pos=-300,0")
+        + "[[FSE MOVE sam pos=alex]]\n\nShe goes.\n"
+    )
+    assert At(Point(-200, 0)) == where(blocking, "MOVE sam pos=alex", "sam")
+
+
+def test_going_up_to_someone_already_beside_them_stays_put() -> None:
+    blocking = process(
+        BESIDE.format(units="m") + "[[FSE MOVE sam pos=-2.2,0]]\n\nShe steps.\n\n"
+        "[[FSE MOVE sam pos=alex]]\n\nShe stays.\n"
+    )
+    assert At(Point(-2.2, 0)) == where(blocking, "MOVE sam pos=alex", "sam")
+
+
+def test_going_up_to_someone_takes_where_they_are_at_the_cue() -> None:
+    blocking = process(
+        BESIDE.format(units="m") + "[[FSE MOVE sam pos=alex until=arrive]]\n\n"
+        "She sets off.\n\n"
+        "[[FSE MOVE alex pos=3,3]]\n\nHe wanders off.\n\n"
+        "[[FSE ARRIVE sam]]\n"
+    )
+    assert At(Point(-2, 0)) == where(blocking, "ARRIVE sam", "sam")
 
 
 def test_not_an_fse_script() -> None:

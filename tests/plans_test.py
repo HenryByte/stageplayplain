@@ -9,7 +9,7 @@ from reportlab.lib.units import mm
 from screenplain import fse
 from screenplain.export import plans
 from screenplain.export.plans import CAST_RADIUS, FACING_TICK, PROP_HALF
-from screenplain.fse.model import State
+from screenplain.fse.model import Point, State
 from screenplain.parsers import fountain
 from tests.recording_canvas import Recorder, Shape
 
@@ -236,6 +236,28 @@ def test_facing_tick_points_where_the_cast_member_faces() -> None:
     assert x2 < x1
     assert y2 < y1
     assert math.dist((x1, y1), (x2, y2)) == pytest.approx(FACING_TICK)
+
+
+def test_facing_a_cast_member_follows_them() -> None:
+    blocking = blocking_for(
+        HALL,
+        "PRESET hamlet pos=0,0 facing=gertrude; PRESET gertrude pos=3,0",
+    )
+    hamlet = plans.facing_angle(
+        blocking, blocking.scenes[0].preset, "hamlet", Point(0, 0)
+    )
+    assert hamlet == pytest.approx(math.pi / 2)
+    # She crosses upstage of him; he keeps facing her.
+    source = (
+        HALL
+        + "\n\nINT. HALL\n\n"
+        + "[[FSE PRESET hamlet pos=0,0 facing=gertrude; PRESET gertrude pos=3,0]]\n\n"
+        + "Action.\n\n[[FSE MOVE gertrude pos=0,3]]\n\nShe crosses.\n"
+    )
+    blocking = fse.process(fountain.parse(io.StringIO(source)))
+    after = blocking.timeline.steps[-1].state
+    hamlet = plans.facing_angle(blocking, after, "hamlet", Point(0, 0))
+    assert hamlet == pytest.approx(0)
 
 
 def test_props_are_squares_numbered_by_the_caller() -> None:

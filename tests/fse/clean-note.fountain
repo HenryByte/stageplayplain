@@ -1,0 +1,10 @@
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY sam type=cast pos=0,0]]
+[[FSE ENTITY mirror type=mark pos=-5,0]]
+
+INT. BATHROOM
+
+[[FSE MOVE sam pos=-4,0; NOTE sam text="Looks at the mirror with longing in his eye"]]
+
+SAM
+I look awful. [[FSE NOTE text="Quietly, to himself"]]

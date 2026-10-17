@@ -1,0 +1,21 @@
+[[FSE STAGE type=proscenium width=10 depth=8 units=m]]
+[[FSE ENTITY door type=entrance pos=5,0]]
+[[FSE ENTITY alex type=cast]]
+[[FSE ENTITY bag type=prop]]
+[[FSE ENTITY coat type=prop]]
+
+INT. FLAT
+
+Empty.
+
+[[FSE ENTER alex from=door pos=2,0; SET bag with=alex; SET coat with=alex]]
+
+Alex comes in with a bag and a coat.
+
+[[FSE SET bag pos=alex by=alex]]
+
+He drops the bag.
+
+[[FSE SET coat pos=bag by=alex]]
+
+And the coat by it.
