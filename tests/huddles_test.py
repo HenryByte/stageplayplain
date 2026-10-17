@@ -101,7 +101,9 @@ def test_inked_seed_before_grey() -> None:
 def test_members_keep_their_own_ink() -> None:
     (huddle,) = crowd([cast("aa", 0), cast("bb", 1, ink=False)])
     assert isinstance(huddle, Huddle)
-    assert [("AA", True), ("BB", False)] == plans.huddle_runs(huddle)
+    assert [plans.Run("AA", plans.INK), plans.Run("BB", plans.GREY)] == (
+        plans.huddle_runs(huddle)
+    )
     (grey,) = crowd([cast("aa", 0, ink=False), cast("bb", 1, ink=False)])
     assert isinstance(grey, Huddle)
     assert not grey.ink

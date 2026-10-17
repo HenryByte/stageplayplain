@@ -116,9 +116,11 @@ class Recorder:
     def beginPath(self) -> Path:
         return Path()
 
-    def drawPath(self, path: Path, fill: int = 0) -> None:
+    def drawPath(self, path: Path, fill: int = 0, stroke: int = 1) -> None:
         x, y = path.points[0]
         self._add("path", x, y, filled=bool(fill))
+        if not stroke:
+            self.shapes[-1].stroke = -1
         self.shapes[-1].points = [
             (px + self.pen.dx, py + self.pen.dy) for px, py in path.points
         ]

@@ -118,9 +118,11 @@ hides them. Scripts without FSE notes are not affected.
 
 With `--blocking`, PDF output opens each scene with a scene plan: a small
 ground plan of the stage as the lights come up, with a key naming the cast
-(by initials) and props (by number) in the scene. Screenplays shift their
-text column half an inch left to make room for plans; page breaks are
-unchanged. In a stage play, FSE notes must come after the front matter (the
+(by initials) and props (by number) in the scene. Each blocking change
+during the scene gets a margin plan beside the line where it happens, with
+the movers in black, a dotted path from where each one was, and a number
+tying the plan to its line. Screenplays shift their text column half an
+inch left to make room for margin plans; page breaks are unchanged. In a stage play, FSE notes must come after the front matter (the
 first `===`).
 
 Credits

@@ -202,7 +202,12 @@ class Blocking:
         """Where an entity is at a cue, interpolated if it is in transit;
         None when it is offstage.
         """
-        state = self.timeline.state_at(cue)
+        return self.point_in(self.timeline.state_at(cue), entity, cue)
+
+    def point_in(self, state: State, entity: str, cue: Cue) -> Point | None:
+        """Where an entity is in a state, interpolated at a cue if it is in
+        transit; None when it is offstage.
+        """
         seen: set[str] = set()
         while entity not in seen:
             seen.add(entity)

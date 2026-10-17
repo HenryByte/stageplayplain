@@ -5,6 +5,7 @@
 """
 
 from screenplain.fse.blocking import Blocking, Change, Scene, Step, Timeline
+from screenplain.fse.groups import StepGroup, picture_changes, step_groups
 from screenplain.fse.processor import process
 from screenplain.fse.reports import FseError, Report, Severity
 from screenplain.fse.script import front_matter_note, has_fse_notes
@@ -17,8 +18,11 @@ __all__ = [
     "Scene",
     "Severity",
     "Step",
+    "StepGroup",
     "Timeline",
     "front_matter_note",
     "has_fse_notes",
+    "picture_changes",
     "process",
+    "step_groups",
 ]

@@ -11,6 +11,7 @@ from reportlab.platypus import Flowable
 
 from screenplain import fse
 from screenplain.export import pdf
+from screenplain.export.margin_plans import FlushMargin
 from screenplain.main import main
 from screenplain.parsers import fountain
 
@@ -227,6 +228,8 @@ def layout(
     placed: list[tuple[int, float, float, float]] = []
 
     def after(doc: pdf.DocTemplate, flowable: Flowable) -> None:
+        if isinstance(flowable, FlushMargin):
+            return
         frame = doc.frame
         assert frame is not None
         placed.append((doc.page, frame._x1, frame._y, getattr(flowable, "height", 0)))
